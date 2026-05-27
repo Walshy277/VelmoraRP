@@ -1,0 +1,197 @@
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+CREATE TYPE character_status AS ENUM ('alive', 'dead', 'missing');
+CREATE TYPE group_type AS ENUM ('family', 'clan', 'tribe', 'guild', 'religion', 'state', 'empire');
+CREATE TYPE membership_role AS ENUM ('member', 'elder', 'leader', 'founder');
+CREATE TYPE claim_control_type AS ENUM ('presence', 'construction', 'political', 'legal');
+CREATE TYPE event_scope AS ENUM ('character', 'settlement', 'group', 'region', 'world');
+CREATE TYPE resource_kind AS ENUM ('food', 'water', 'wood', 'stone', 'fiber', 'clay', 'copper', 'tin', 'iron');
+CREATE TYPE structure_kind AS ENUM ('campfire', 'hut', 'storehouse', 'workshop', 'wall', 'farm', 'shrine', 'archive');
+CREATE TYPE knowledge_category AS ENUM ('survival', 'crafting', 'agriculture', 'metallurgy', 'construction', 'medicine', 'governance', 'religion', 'writing');
+
+CREATE TABLE accounts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email TEXT UNIQUE NOT NULL,
+  display_name TEXT NOT NULL,
+  password_hash TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE world_ticks (
+  id BIGSERIAL PRIMARY KEY,
+  tick_number BIGINT NOT NULL UNIQUE,
+  started_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  completed_at TIMESTAMPTZ,
+  duration_ms INTEGER,
+  status TEXT NOT NULL DEFAULT 'running'
+);
+
+CREATE TABLE regions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL UNIQUE,
+  shard_key TEXT NOT NULL,
+  terrain JSONB NOT NULL DEFAULT '{}'::jsonb,
+  climate JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE characters (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  account_id UUID NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+  region_id UUID REFERENCES regions(id),
+  name TEXT NOT NULL,
+  status character_status NOT NULL DEFAULT 'alive',
+  age_days INTEGER NOT NULL DEFAULT 0,
+  hunger INTEGER NOT NULL DEFAULT 0 CHECK (hunger >= 0 AND hunger <= 100),
+  health INTEGER NOT NULL DEFAULT 100 CHECK (health >= 0 AND health <= 100),
+  position_x NUMERIC(12, 3) NOT NULL DEFAULT 0,
+  position_y NUMERIC(12, 3) NOT NULL DEFAULT 0,
+  lineage_id UUID,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  died_at TIMESTAMPTZ
+);
+
+CREATE TABLE groups (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  type group_type NOT NULL,
+  name TEXT NOT NULL,
+  description TEXT,
+  parent_group_id UUID REFERENCES groups(id) ON DELETE SET NULL,
+  founded_by_character_id UUID REFERENCES characters(id) ON DELETE SET NULL,
+  founded_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  dissolved_at TIMESTAMPTZ,
+  governance JSONB NOT NULL DEFAULT '{}'::jsonb
+);
+
+CREATE TABLE group_memberships (
+  group_id UUID NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+  character_id UUID NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+  role membership_role NOT NULL DEFAULT 'member',
+  reputation INTEGER NOT NULL DEFAULT 0,
+  joined_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  left_at TIMESTAMPTZ,
+  PRIMARY KEY (group_id, character_id)
+);
+
+CREATE TABLE settlements (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  region_id UUID NOT NULL REFERENCES regions(id) ON DELETE CASCADE,
+  controlling_group_id UUID REFERENCES groups(id) ON DELETE SET NULL,
+  name TEXT NOT NULL,
+  position_x NUMERIC(12, 3) NOT NULL,
+  position_y NUMERIC(12, 3) NOT NULL,
+  population_estimate INTEGER NOT NULL DEFAULT 0,
+  storage JSONB NOT NULL DEFAULT '{}'::jsonb,
+  founded_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  abandoned_at TIMESTAMPTZ
+);
+
+CREATE TABLE structures (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  settlement_id UUID REFERENCES settlements(id) ON DELETE SET NULL,
+  region_id UUID NOT NULL REFERENCES regions(id) ON DELETE CASCADE,
+  owner_group_id UUID REFERENCES groups(id) ON DELETE SET NULL,
+  owner_character_id UUID REFERENCES characters(id) ON DELETE SET NULL,
+  kind structure_kind NOT NULL,
+  name TEXT,
+  position_x NUMERIC(12, 3) NOT NULL,
+  position_y NUMERIC(12, 3) NOT NULL,
+  hit_points INTEGER NOT NULL DEFAULT 100,
+  construction_progress INTEGER NOT NULL DEFAULT 0 CHECK (construction_progress >= 0 AND construction_progress <= 100),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  completed_at TIMESTAMPTZ
+);
+
+CREATE TABLE resource_nodes (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  region_id UUID NOT NULL REFERENCES regions(id) ON DELETE CASCADE,
+  kind resource_kind NOT NULL,
+  position_x NUMERIC(12, 3) NOT NULL,
+  position_y NUMERIC(12, 3) NOT NULL,
+  quantity INTEGER NOT NULL CHECK (quantity >= 0),
+  max_quantity INTEGER NOT NULL CHECK (max_quantity >= 0),
+  regen_per_tick INTEGER NOT NULL DEFAULT 0,
+  last_tick_processed BIGINT NOT NULL DEFAULT 0
+);
+
+CREATE TABLE inventories (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  character_id UUID REFERENCES characters(id) ON DELETE CASCADE,
+  structure_id UUID REFERENCES structures(id) ON DELETE CASCADE,
+  settlement_id UUID REFERENCES settlements(id) ON DELETE CASCADE,
+  group_id UUID REFERENCES groups(id) ON DELETE CASCADE,
+  items JSONB NOT NULL DEFAULT '{}'::jsonb,
+  CHECK (
+    (character_id IS NOT NULL)::integer +
+    (structure_id IS NOT NULL)::integer +
+    (settlement_id IS NOT NULL)::integer +
+    (group_id IS NOT NULL)::integer = 1
+  )
+);
+
+CREATE TABLE knowledge_entries (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL UNIQUE,
+  category knowledge_category NOT NULL,
+  description TEXT,
+  requirements JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE character_knowledge (
+  character_id UUID NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+  knowledge_id UUID NOT NULL REFERENCES knowledge_entries(id) ON DELETE CASCADE,
+  proficiency INTEGER NOT NULL DEFAULT 1 CHECK (proficiency >= 1 AND proficiency <= 100),
+  learned_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  source_event_id UUID,
+  PRIMARY KEY (character_id, knowledge_id)
+);
+
+CREATE TABLE group_knowledge (
+  group_id UUID NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+  knowledge_id UUID NOT NULL REFERENCES knowledge_entries(id) ON DELETE CASCADE,
+  institutional_strength INTEGER NOT NULL DEFAULT 1 CHECK (institutional_strength >= 1 AND institutional_strength <= 100),
+  preserved_by_structure_id UUID REFERENCES structures(id) ON DELETE SET NULL,
+  adopted_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (group_id, knowledge_id)
+);
+
+CREATE TABLE territory_claims (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  region_id UUID NOT NULL REFERENCES regions(id) ON DELETE CASCADE,
+  group_id UUID NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+  control_type claim_control_type NOT NULL,
+  strength INTEGER NOT NULL DEFAULT 1 CHECK (strength >= 0 AND strength <= 100),
+  bounds JSONB NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  last_evaluated_tick BIGINT NOT NULL DEFAULT 0
+);
+
+CREATE TABLE historical_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tick_number BIGINT,
+  scope event_scope NOT NULL,
+  event_type TEXT NOT NULL,
+  region_id UUID REFERENCES regions(id) ON DELETE SET NULL,
+  character_id UUID REFERENCES characters(id) ON DELETE SET NULL,
+  group_id UUID REFERENCES groups(id) ON DELETE SET NULL,
+  settlement_id UUID REFERENCES settlements(id) ON DELETE SET NULL,
+  summary TEXT NOT NULL,
+  payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE character_knowledge
+  ADD CONSTRAINT character_knowledge_source_event_fk
+  FOREIGN KEY (source_event_id) REFERENCES historical_events(id) ON DELETE SET NULL;
+
+CREATE INDEX idx_characters_account_id ON characters(account_id);
+CREATE INDEX idx_characters_region_position ON characters(region_id, position_x, position_y);
+CREATE INDEX idx_group_memberships_character_id ON group_memberships(character_id);
+CREATE INDEX idx_settlements_region_id ON settlements(region_id);
+CREATE INDEX idx_structures_region_position ON structures(region_id, position_x, position_y);
+CREATE INDEX idx_resource_nodes_region_kind ON resource_nodes(region_id, kind);
+CREATE INDEX idx_territory_claims_region_id ON territory_claims(region_id);
+CREATE INDEX idx_historical_events_tick_number ON historical_events(tick_number);
+CREATE INDEX idx_historical_events_region_id ON historical_events(region_id);

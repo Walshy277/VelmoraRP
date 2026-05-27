@@ -1,0 +1,102 @@
+VelmoraRP - Core Concept, Core Loop, and Main Mechanics
+
+1. CORE CONCEPT
+
+VelmoraRP is a persistent, online roleplay civilization simulation game that begins at the dawn of human civilization and progresses through successive historical eras.
+
+Players do not follow a scripted narrative. Instead, they collectively generate history through survival, cooperation, conflict, innovation, and cultural development.
+
+The world evolves from small primitive tribes into complex societies, kingdoms, empires, and post-industrial civilizations. All history is persistent, meaning past actions leave lasting physical, political, and cultural impact on the world.
+
+The core identity of VelmoraRP is:
+- Emergent civilization building
+- Player-driven history
+- Persistent world evolution
+- Social and political roleplay over time
+- Knowledge and culture as primary progression systems
+
+---
+
+2. CORE GAME LOOP
+
+The gameplay loop operates on multiple interconnected layers:
+
+A. SHORT-TERM LOOP (moment-to-moment gameplay)
+- Gather resources (food, water, materials)
+- Survive environmental threats
+- Cooperate with other players
+- Complete immediate survival tasks
+- Contribute to group objectives
+
+B. MEDIUM-TERM LOOP (community and development)
+- Form tribes, settlements, and groups
+- Specialize roles (hunter, builder, healer, leader, artisan)
+- Develop infrastructure (shelter, farms, storage, defenses)
+- Establish trade relationships with other groups
+- Solve collective survival and resource problems
+
+C. LONG-TERM LOOP (civilization evolution)
+- Discover and spread technologies
+- Develop governance systems (chiefdoms, councils, kingdoms)
+- Form religions, cultures, and traditions
+- Expand territory through migration, diplomacy, or conflict
+- Build permanent settlements and cities
+- Record history through writing, oral tradition, or monuments
+
+D. META LOOP (historical persistence)
+- Civilizations rise and fall over time
+- Knowledge is preserved, lost, or rediscovered
+- Ruins and artifacts shape future societies
+- Player lineages and cultural institutions persist across generations
+- The world continuously evolves through collective player impact
+
+---
+
+3. MAIN MECHANICS
+
+A. KNOWLEDGE SYSTEM
+- Technologies are not instantly unlocked
+- They must be discovered, learned, and transmitted socially
+- Knowledge spreads through trade, migration, conquest, and teaching
+- Advanced knowledge requires institutions and specialists
+- Knowledge can be lost during collapse events
+
+B. SOCIAL STRUCTURE SYSTEM
+- Players form dynamic social organizations
+- Roles emerge organically based on contribution and skill
+- Leadership is earned through influence and legitimacy, not levels
+- Societies develop hierarchies, governance systems, and laws
+
+C. RESOURCE & ECONOMY SYSTEM
+- Resources are local and region-dependent
+- Scarcity drives trade, conflict, and cooperation
+- Early economy is barter-based, later evolves into structured trade systems
+- Infrastructure enables scaling of production and distribution
+
+D. TERRITORY & EXPANSION SYSTEM
+- Land is claimed by presence, construction, or political control
+- Territory provides access to resources and strategic advantages
+- Borders evolve through diplomacy, war, and migration
+- Geography strongly influences cultural development
+
+E. PERSISTENT WORLD SYSTEM
+- All player actions permanently affect the world
+- Cities, ruins, roads, and artifacts remain over time
+- Environmental and political changes accumulate historically
+- The world functions as a living historical record
+
+F. CULTURE & RELIGION SYSTEM
+- Beliefs and myths emerge from events and interpretation
+- Religions are player-created and evolve over time
+- Cultural identity affects gameplay bonuses and social cohesion
+- Traditions persist across generations and civilizations
+
+G. DYNASTY & LEGACY SYSTEM
+- Players are not immortal; they leave legacies
+- Family lines, institutions, and factions persist beyond individual characters
+- Historical figures shape future political and cultural systems
+- Reputation and influence carry long-term weight
+
+---
+
+VelmoraRP is designed as a living simulation of human civilization, where the primary gameplay is not individual progression, but collective historical creation.

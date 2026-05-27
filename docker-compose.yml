@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: velmorarp-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: velmora
+      POSTGRES_PASSWORD: velmora
+      POSTGRES_DB: velmorarp
+    ports:
+      - "5432:5432"
+    volumes:
+      - velmorarp_postgres:/var/lib/postgresql/data
+
+volumes:
+  velmorarp_postgres:
