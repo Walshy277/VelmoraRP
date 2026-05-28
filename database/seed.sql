@@ -1,8 +1,3 @@
-INSERT INTO regions (name, shard_key, terrain, climate)
-VALUES
-  ('Central Vale', 'region-central-vale', '{"biome":"temperate","rivers":1}', '{"rainfall":"moderate","season":"spring"}')
-ON CONFLICT (name) DO NOTHING;
-
 INSERT INTO knowledge_entries (name, category, description, requirements)
 VALUES
   ('Basic Foraging', 'survival', 'Identify safe edible plants and basic water sources.', '{}'),

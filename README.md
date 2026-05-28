@@ -6,6 +6,8 @@ This is an early backend skeleton for the VelmoraRP civilization simulation.
 
 - `database/schema.sql`: PostgreSQL schema for accounts, characters, groups, settlements, structures, resources, knowledge, territory, ticks, and historical events.
 - `database/seed.sql`: starter region and early knowledge entries.
+- `docs/SYSTEM_INTERFACE.md`: backend interface boundaries and tick rules.
+- `docs/NEXT_10_COMMITS.md`: recommended implementation roadmap.
 - `src/server.ts`: Express API entrypoint.
 - `src/simulation/tickEngine.ts`: world tick loop.
 - `src/simulation/systems`: placeholder simulation systems.
@@ -44,6 +46,7 @@ npm run dev
 - `GET /health`
 - `GET /world/regions`
 - `GET /world/history`
+- `GET /world/calendar`
 
 ## Architecture Direction
 
@@ -52,4 +55,6 @@ The skeleton follows the GDD model:
 - The database is event-friendly and stores historical events separately from current world state.
 - The tick engine records each world tick before processing simulation systems.
 - Simulation systems are isolated modules so resources, survival, knowledge, territory, and politics can evolve separately.
-- Regions include a `shard_key` so future region servers can split world simulation geographically.
+- Regions include a `shard_key` so future region servers can split world simulation geographically, but no regions are seeded at start.
+- Player input should enter through queued actions, then be processed by the tick engine.
+- The world begins without a calendar. Day 1 starts when the first normal player registers after the creator.

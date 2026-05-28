@@ -379,6 +379,14 @@ Each cycle should produce ruins, myths, lost technologies, displaced populations
 
 The server runs on discrete ticks. Early targets may use 1 to 10 second ticks depending on player count, simulation cost, and responsiveness requirements.
 
+The game should feel real time, but civilization progress should not be equally fast for every group size. Low member count means slow progression. A lone player or tiny camp can survive, gather, and build, but large-scale construction, knowledge preservation, territory control, and institutional growth should advance much more slowly until the group has enough active members and supporting institutions.
+
+At world creation there is no calendar and no shared time concept. This is the dawn of civilization: no known regions, no recorded history, and no established worldview. The creator account does not begin the historical calendar. The first normal player registration after the creator begins Day 1.
+
+After Day 1 begins, days progress with real time, with the initial rule being one real day equals one in-game day. Tick count does not define the calendar; ticks only process simulation work inside the current real-time day.
+
+Because the starting population is small, players are unlikely to meet immediately. The early game must support isolated survival. Players fend for themselves until exploration, migration, and new registrations create enough density for social structures to emerge.
+
 Each tick may process:
 
 - Movement.
@@ -667,4 +675,3 @@ Mitigations:
 VelmoraRP is not a traditional quest-driven game. It is a persistent simulation of human civilization where players are the authors of history.
 
 The core engineering challenge is not content creation. It is supporting emergent behavior without allowing the simulation, social layer, or server architecture to collapse under that behavior.
-
