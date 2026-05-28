@@ -383,6 +383,8 @@ The game should feel real time, but civilization progress should not be equally 
 
 At world creation there is no calendar and no shared time concept. This is the dawn of civilization: no known regions, no recorded history, and no established worldview. The creator account does not begin the historical calendar. The first normal player registration after the creator begins Day 1.
 
+The first registered account is treated as the creator account. The creator can prepare or administer the blank canvas, but does not count as the first historical inhabitant. The second registered account, as the first normal player, starts Day 1.
+
 After Day 1 begins, days progress with real time, with the initial rule being one real day equals one in-game day. Tick count does not define the calendar; ticks only process simulation work inside the current real-time day.
 
 Because the starting population is small, players are unlikely to meet immediately. The early game must support isolated survival. Players fend for themselves until exploration, migration, and new registrations create enough density for social structures to emerge.

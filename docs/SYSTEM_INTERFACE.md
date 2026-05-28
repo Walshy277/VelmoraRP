@@ -51,6 +51,26 @@ Initial command shape:
 
 The tick engine owns validation, ordering, rejection, and application of queued actions.
 
+## Registration Interface
+
+`POST /auth/register` creates accounts.
+
+The first registered account becomes the creator account. Creator accounts exist outside the historical start condition and do not begin Day 1.
+
+The first non-creator account starts Day 1 by setting:
+
+- `world_calendar.day_one_started_at`
+- `world_calendar.day_one_started_by_account_id`
+
+This gives the server an explicit pre-history state:
+
+```text
+0 accounts               -> blank canvas, no calendar
+1 creator account        -> prepared world, still no calendar
+first player account     -> Day 1 begins
+later player accounts    -> join the existing calendar
+```
+
 ## Query Interface
 
 Read endpoints can query current state directly:

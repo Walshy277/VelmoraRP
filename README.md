@@ -43,10 +43,13 @@ npm run dev
 
 ## Initial API
 
+- `POST /auth/register`
 - `GET /health`
 - `GET /world/regions`
 - `GET /world/history`
 - `GET /world/calendar`
+
+The first registered account becomes the creator account. The first non-creator registration starts Day 1.
 
 ## Architecture Direction
 

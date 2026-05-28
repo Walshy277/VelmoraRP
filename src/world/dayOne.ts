@@ -1,7 +1,7 @@
-import { pool } from '../db/pool.js';
+import type { PoolClient } from 'pg';
 
-export async function startDayOneIfFirstPlayerAfterCreator(accountId: string): Promise<boolean> {
-  const result = await pool.query(
+export async function startDayOneIfFirstPlayerAfterCreator(client: PoolClient, accountId: string): Promise<boolean> {
+  const result = await client.query(
     `
       UPDATE world_calendar
       SET

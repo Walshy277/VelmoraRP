@@ -25,6 +25,8 @@ CREATE TABLE accounts (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+CREATE UNIQUE INDEX idx_accounts_single_creator ON accounts(is_creator) WHERE is_creator = true;
+
 CREATE TABLE world_ticks (
   id BIGSERIAL PRIMARY KEY,
   tick_number BIGINT NOT NULL UNIQUE,

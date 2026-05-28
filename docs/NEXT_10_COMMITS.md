@@ -10,7 +10,7 @@ Add `POST /actions` with Zod validation. Commands should enqueue into `player_ac
 
 ## 3. Implement Character Creation
 
-Add account and character creation routes, starter spawn placement, lineage creation, and initial inventory.
+Add character creation routes, starter spawn placement, lineage creation, and initial inventory. Account registration now exists; character creation should attach playable lives to those accounts.
 
 ## 4. Implement Resource Gathering
 

@@ -1,6 +1,7 @@
 import express from 'express';
 import { config } from './config.js';
 import { closeDatabase } from './db/pool.js';
+import { authRouter } from './routes/auth.js';
 import { healthRouter } from './routes/health.js';
 import { worldRouter } from './routes/world.js';
 import { startTickLoop } from './simulation/tickEngine.js';
@@ -8,6 +9,7 @@ import { startTickLoop } from './simulation/tickEngine.js';
 const app = express();
 
 app.use(express.json());
+app.use(authRouter);
 app.use(healthRouter);
 app.use(worldRouter);
 
