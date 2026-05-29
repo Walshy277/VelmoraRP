@@ -5,7 +5,7 @@ This document defines the first stable backend boundaries. The goal is to keep p
 ## Runtime Shape
 
 ```text
-Client
+Browser Client
   |
   v
 HTTP API
@@ -19,6 +19,7 @@ Simulation Tick Engine
   +--> player_actions
   +--> resources
   +--> survival
+  +--> injuries
   +--> progression
   +--> construction
   +--> territory
@@ -28,6 +29,27 @@ Simulation Tick Engine
   v
 PostgreSQL current state + historical_events
 ```
+
+## Client Target
+
+VelmoraRP is a browser game. The browser client is the primary game surface, not an administrative companion app.
+
+The first client implementation is served from `public/` by the Express server. Future commits can replace this with a dedicated frontend app if the UI becomes complex enough to need a build pipeline.
+
+Browser responsibilities:
+
+- Render the known and unknown world.
+- Submit registration and player actions.
+- Poll or subscribe to world state.
+- Show calendar state only after Day 1 begins.
+- Keep early isolated survival playable before players meet.
+
+Server responsibilities:
+
+- Own all authoritative simulation state.
+- Validate commands.
+- Process actions during ticks.
+- Return current world state and historical events.
 
 ## Command Interface
 
@@ -180,19 +202,38 @@ This keeps the game real time while making civilization-scale progress require p
 1. player_actions
 2. resources
 3. survival
-4. progression
-5. construction
-6. territory
-7. knowledge
-8. politics
+4. injuries
+5. progression
+6. construction
+7. territory
+8. knowledge
+9. politics
 ```
 
 This order is intentionally conservative:
 
 - Player actions enter first.
 - Resource and survival pressure update before social systems.
+- Injuries and recovery are resolved before active social capacity is calculated.
 - Progression rates are recalculated before systems consume labor, knowledge, or territory multipliers.
 - Construction changes territory possibilities.
+
+## Defeat And Continuity
+
+VelmoraRP does not use default character permadeath. Defeat creates setbacks instead of deleting the player's long-term identity.
+
+Consequences include:
+
+- Injury and recovery time.
+- Incapacitation.
+- Imprisonment.
+- Exile.
+- Political disgrace.
+- Reputation and influence loss.
+- Economic and territorial damage.
+
+The player survives, but their position may collapse.
+
 - Knowledge and politics react to world changes after physical state has moved.
 
 ## Persistence Rules

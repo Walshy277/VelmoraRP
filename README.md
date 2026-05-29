@@ -2,10 +2,13 @@
 
 This is an early backend skeleton for the VelmoraRP civilization simulation.
 
+VelmoraRP is designed as a browser game. The Express server serves the first browser client from `public/` while also exposing the game API.
+
 ## Contents
 
 - `database/schema.sql`: PostgreSQL schema for accounts, characters, groups, settlements, structures, resources, knowledge, territory, ticks, and historical events.
 - `database/seed.sql`: starter region and early knowledge entries.
+- `public/`: browser game shell served by the Express app.
 - `docs/SYSTEM_INTERFACE.md`: backend interface boundaries and tick rules.
 - `docs/NEXT_10_COMMITS.md`: recommended implementation roadmap.
 - `src/server.ts`: Express API entrypoint.
@@ -41,6 +44,15 @@ psql "$DATABASE_URL" -f database/seed.sql
 npm run dev
 ```
 
+## Verification
+
+```bash
+npm run format:check
+npm run lint
+npm run test
+npm run build
+```
+
 ## Initial API
 
 - `POST /auth/register`
@@ -48,8 +60,26 @@ npm run dev
 - `GET /world/regions`
 - `GET /world/history`
 - `GET /world/calendar`
+- `GET /dev/state`
+- `GET /dev/replay`
 
 The first registered account becomes the creator account. The first non-creator registration starts Day 1.
+
+## Browser Client
+
+Run the server and open:
+
+```text
+http://localhost:3000
+```
+
+The first browser shell shows the blank-canvas world state, registration flow, calendar state, known regions, and recent history.
+
+The dev dashboard is available at:
+
+```text
+http://localhost:3000/dev.html
+```
 
 ## Architecture Direction
 

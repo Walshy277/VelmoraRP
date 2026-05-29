@@ -10,7 +10,7 @@ export const progressionSystem: SimulationSystem = {
         WITH group_capacity AS (
           SELECT
             g.id AS group_id,
-            COUNT(c.id) FILTER (WHERE c.status = 'alive' AND gm.left_at IS NULL) AS active_member_count,
+            COUNT(c.id) FILTER (WHERE c.status = 'active' AND gm.left_at IS NULL) AS active_member_count,
             COUNT(s.id) FILTER (
               WHERE s.completed_at IS NOT NULL
                 AND s.kind IN ('workshop', 'shrine', 'archive', 'storehouse')

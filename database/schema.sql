@@ -1,6 +1,16 @@
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
-CREATE TYPE character_status AS ENUM ('alive', 'dead', 'missing');
+CREATE TYPE character_status AS ENUM ('active', 'incapacitated', 'imprisoned', 'exiled', 'retired', 'missing');
+CREATE TYPE injury_kind AS ENUM (
+  'exhaustion',
+  'broken_limb',
+  'trauma',
+  'disease',
+  'morale_collapse',
+  'political_disgrace',
+  'imprisonment',
+  'battlefield_injury'
+);
 CREATE TYPE region_status AS ENUM ('active', 'hibernating', 'archived');
 CREATE TYPE tick_status AS ENUM ('running', 'completed', 'failed');
 CREATE TYPE group_type AS ENUM ('family', 'clan', 'tribe', 'guild', 'religion', 'state', 'empire');
@@ -101,7 +111,7 @@ CREATE TABLE characters (
   account_id UUID NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
   region_id UUID REFERENCES regions(id),
   name TEXT NOT NULL,
-  status character_status NOT NULL DEFAULT 'alive',
+  status character_status NOT NULL DEFAULT 'active',
   age_days INTEGER NOT NULL DEFAULT 0,
   hunger INTEGER NOT NULL DEFAULT 0 CHECK (hunger >= 0 AND hunger <= 100),
   thirst INTEGER NOT NULL DEFAULT 0 CHECK (thirst >= 0 AND thirst <= 100),
@@ -110,7 +120,7 @@ CREATE TABLE characters (
   position_y NUMERIC(12, 3) NOT NULL DEFAULT 0,
   lineage_id UUID REFERENCES lineages(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  died_at TIMESTAMPTZ
+  retired_at TIMESTAMPTZ
 );
 
 ALTER TABLE lineages
@@ -150,6 +160,32 @@ CREATE TABLE group_relationships (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   PRIMARY KEY (source_group_id, target_group_id),
   CHECK (source_group_id <> target_group_id)
+);
+
+CREATE TABLE character_injuries (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  character_id UUID NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+  kind injury_kind NOT NULL,
+  severity INTEGER NOT NULL DEFAULT 1 CHECK (severity >= 1 AND severity <= 100),
+  efficiency_penalty NUMERIC(5, 3) NOT NULL DEFAULT 0 CHECK (efficiency_penalty >= 0 AND efficiency_penalty <= 1),
+  movement_penalty NUMERIC(5, 3) NOT NULL DEFAULT 0 CHECK (movement_penalty >= 0 AND movement_penalty <= 1),
+  influence_penalty NUMERIC(5, 3) NOT NULL DEFAULT 0 CHECK (influence_penalty >= 0 AND influence_penalty <= 1),
+  source_event_id UUID,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  recovery_started_at TIMESTAMPTZ,
+  recovered_at TIMESTAMPTZ
+);
+
+CREATE TABLE character_setbacks (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  character_id UUID NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+  setback_type TEXT NOT NULL,
+  summary TEXT NOT NULL,
+  reputation_delta INTEGER NOT NULL DEFAULT 0,
+  influence_delta INTEGER NOT NULL DEFAULT 0,
+  payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+  source_event_id UUID,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE TABLE settlements (
@@ -300,8 +336,18 @@ ALTER TABLE character_knowledge
   ADD CONSTRAINT character_knowledge_source_event_fk
   FOREIGN KEY (source_event_id) REFERENCES historical_events(id) ON DELETE SET NULL;
 
+ALTER TABLE character_injuries
+  ADD CONSTRAINT character_injuries_source_event_fk
+  FOREIGN KEY (source_event_id) REFERENCES historical_events(id) ON DELETE SET NULL;
+
+ALTER TABLE character_setbacks
+  ADD CONSTRAINT character_setbacks_source_event_fk
+  FOREIGN KEY (source_event_id) REFERENCES historical_events(id) ON DELETE SET NULL;
+
 CREATE INDEX idx_characters_account_id ON characters(account_id);
 CREATE INDEX idx_characters_region_position ON characters(region_id, position_x, position_y);
+CREATE INDEX idx_character_injuries_character_active ON character_injuries(character_id) WHERE recovered_at IS NULL;
+CREATE INDEX idx_character_setbacks_character_id ON character_setbacks(character_id);
 CREATE INDEX idx_group_memberships_character_id ON group_memberships(character_id);
 CREATE INDEX idx_group_relationships_target_group_id ON group_relationships(target_group_id);
 CREATE INDEX idx_settlements_region_id ON settlements(region_id);

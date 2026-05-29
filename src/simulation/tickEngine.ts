@@ -1,6 +1,9 @@
 import { pool } from '../db/pool.js';
+import { beginTransaction, commitTransaction, rollbackTransaction } from '../db/transactions.js';
 import { recordHistoricalEvent } from '../events/historicalEvents.js';
+import { logger } from '../logger.js';
 import { calculateGameDay } from './calendar.js';
+import { executeSimulationSystems } from './executeSystems.js';
 import { simulationSystems } from './systems/index.js';
 import type { SimulationSystem, TickResult } from './types.js';
 
@@ -13,14 +16,14 @@ export async function runWorldTick(systems: SimulationSystem[] = simulationSyste
   let gameDay: number | null = null;
 
   try {
-    await client.query('BEGIN');
+    await beginTransaction(client);
 
     const lockResult = await client.query<{ locked: boolean }>('SELECT pg_try_advisory_xact_lock($1) AS locked', [
       TICK_ADVISORY_LOCK_KEY
     ]);
 
     if (!lockResult.rows[0]?.locked) {
-      await client.query('ROLLBACK');
+      await rollbackTransaction(client);
       return null;
     }
 
@@ -47,36 +50,14 @@ export async function runWorldTick(systems: SimulationSystem[] = simulationSyste
     );
 
     tickNumber = Number(tickResult.rows[0].tick_number);
-    const systemResults = [];
-
-    for (const system of systems) {
-      const systemStartedAt = Date.now();
-      const result = await system.run({
-        tickNumber,
-        gameDay,
-        startedAt: new Date(startedAt),
-        pool,
-        client
-      });
-      const durationMs = Date.now() - systemStartedAt;
-
-      systemResults.push(result);
-
-      await client.query(
-        `
-          INSERT INTO simulation_system_runs (
-            tick_number,
-            system_name,
-            processed_count,
-            emitted_event_count,
-            duration_ms,
-            metrics
-          )
-          VALUES ($1, $2, $3, $4, $5, $6)
-        `,
-        [tickNumber, result.system, result.processed, result.events, durationMs, result.metrics ?? {}]
-      );
-    }
+    const tickContext = {
+      tickNumber,
+      gameDay,
+      startedAt: new Date(startedAt),
+      pool,
+      client
+    };
+    const systemResults = await executeSimulationSystems(tickContext, systems);
 
     const durationMs = Date.now() - startedAt;
 
@@ -89,7 +70,7 @@ export async function runWorldTick(systems: SimulationSystem[] = simulationSyste
       [tickNumber, durationMs]
     );
 
-    await client.query('COMMIT');
+    await commitTransaction(client);
 
     await recordHistoricalEvent({
       tickNumber,
@@ -110,7 +91,7 @@ export async function runWorldTick(systems: SimulationSystem[] = simulationSyste
       systems: systemResults
     };
   } catch (error) {
-    await client.query('ROLLBACK');
+    await rollbackTransaction(client);
 
     if (tickNumber !== undefined) {
       await pool.query(
@@ -136,7 +117,7 @@ export async function runWorldTick(systems: SimulationSystem[] = simulationSyste
 export function startTickLoop(intervalMs: number): NodeJS.Timeout {
   return setInterval(() => {
     runWorldTick().catch((error: unknown) => {
-      console.error('World tick failed', error);
+      logger.error({ err: error }, 'World tick failed');
     });
   }, intervalMs);
 }

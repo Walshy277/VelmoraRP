@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>VelmoraRP</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="game-shell">
+      <section class="world-stage" aria-label="World viewport">
+        <canvas id="world-canvas" width="1280" height="720"></canvas>
+        <div class="hud hud-top">
+          <div>
+            <p class="label">World State</p>
+            <h1 id="world-state">Pre-history</h1>
+          </div>
+          <div class="day-pill" id="game-day">No calendar</div>
+        </div>
+        <div class="hud hud-bottom">
+          <button id="explore-button" type="button">Explore</button>
+          <button id="forage-button" type="button">Forage</button>
+          <button id="camp-button" type="button">Camp</button>
+        </div>
+      </section>
+
+      <aside class="side-panel" aria-label="Player and world controls">
+        <section class="panel-section">
+          <p class="label">Registration</p>
+          <form id="register-form">
+            <label>
+              Email
+              <input id="email" name="email" type="email" autocomplete="email" required />
+            </label>
+            <label>
+              Display name
+              <input id="display-name" name="displayName" type="text" minlength="2" maxlength="40" required />
+            </label>
+            <label>
+              Password
+              <input id="password" name="password" type="password" minlength="10" required />
+            </label>
+            <button type="submit">Register</button>
+          </form>
+          <p id="registration-result" class="status-text">The first account becomes creator. The next begins Day 1.</p>
+        </section>
+
+        <section class="panel-section">
+          <p class="label">Known World</p>
+          <dl class="stats">
+            <div>
+              <dt>Calendar</dt>
+              <dd id="calendar-status">Checking...</dd>
+            </div>
+            <div>
+              <dt>Regions</dt>
+              <dd id="region-count">Unknown</dd>
+            </div>
+            <div>
+              <dt>History</dt>
+              <dd id="history-count">Unknown</dd>
+            </div>
+          </dl>
+        </section>
+
+        <section class="panel-section">
+          <p class="label">Recent History</p>
+          <ol id="history-list" class="history-list"></ol>
+        </section>
+      </aside>
+    </main>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

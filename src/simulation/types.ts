@@ -5,6 +5,7 @@ export type SimulationSystemName =
   | 'player_actions'
   | 'resources'
   | 'survival'
+  | 'injuries'
   | 'progression'
   | 'construction'
   | 'territory'

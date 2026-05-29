@@ -2,7 +2,7 @@
 
 ## 1. High Concept
 
-VelmoraRP is a persistent online civilization simulation and roleplay game where players begin in pre-civilizational conditions and collectively shape the entire history of a living world.
+VelmoraRP is a persistent browser-based online civilization simulation and roleplay game where players begin in pre-civilizational conditions and collectively shape the entire history of a living world.
 
 The game simulates the emergence, growth, transformation, and collapse of civilizations through survival-driven cooperation, emergent political systems, knowledge transmission and loss, cultural and religious evolution, and player-driven historical narrative.
 
@@ -222,13 +222,23 @@ Religions are player-created belief systems that may evolve over time, split int
 
 Culture and religion should not be purely cosmetic. They should affect cohesion, legitimacy, diplomacy, identity, and long-term historical memory.
 
-### 4.6 Dynasty And Legacy System
+### 4.6 Continuity, Injury, And Legacy System
 
-Players are mortal. Persistence is achieved through family lines, institutions, written history, inherited property, cultural memory, political titles, religious offices, and public reputation.
+Characters do not permanently die as the default consequence for defeat. VelmoraRP is built around long-term identity, reputation, faction history, and persistent social simulation.
+
+Conflict creates consequences through injury, imprisonment, exile, political disgrace, economic loss, territorial collapse, and influence damage. The character remains part of history, but their position may not.
+
+Possible character states include active, incapacitated, imprisoned, exiled, retired, and missing.
+
+Injuries may include exhaustion, broken limbs, trauma, disease, morale collapse, political disgrace, imprisonment, and battlefield injury. These can affect action efficiency, travel speed, economic productivity, leadership influence, and diplomatic outcomes.
+
+Historical retirement can remove a character from active play without deleting their identity. A ruler may abdicate, a merchant may become irrelevant, a rebel may be imprisoned, or a disgraced noble may retreat from politics.
+
+Persistence is achieved through reputation, faction history, institutions, written history, inherited property, cultural memory, political titles, religious offices, and public memory.
 
 Core principle:
 
-> You do not persist. Your impact does.
+> Your character persists, but your position is never guaranteed.
 
 ## 5. World Simulation Model
 
@@ -394,6 +404,7 @@ Each tick may process:
 - Movement.
 - Resource regeneration and depletion.
 - Hunger, health, and environmental pressure.
+- Injuries, recovery, and incapacitation.
 - Construction progress.
 - Crafting progress.
 - Knowledge spread.
@@ -439,7 +450,7 @@ These are conceptual models, not final database schemas.
 - Character ID.
 - Account ID.
 - Name.
-- Age and mortality state.
+- Age and continuity state.
 - Family or lineage ID.
 - Location.
 - Known knowledge entries.

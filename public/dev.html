@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>VelmoraRP Dev Dashboard</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="side-panel dev-dashboard">
+      <section class="panel-section">
+        <p class="label">Dev Dashboard</p>
+        <h1>Simulation State</h1>
+        <p id="dev-status" class="status-text">Loading...</p>
+      </section>
+      <section class="panel-section">
+        <p class="label">Ticks</p>
+        <ol id="dev-ticks" class="history-list"></ol>
+      </section>
+      <section class="panel-section">
+        <p class="label">Action Queue</p>
+        <ol id="dev-actions" class="history-list"></ol>
+      </section>
+      <section class="panel-section">
+        <p class="label">Recent Events</p>
+        <ol id="dev-history" class="history-list"></ol>
+      </section>
+    </main>
+    <script type="module" src="/dev.js"></script>
+  </body>
+</html>

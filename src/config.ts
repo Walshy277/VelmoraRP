@@ -6,7 +6,8 @@ const ConfigSchema = z.object({
   PORT: z.coerce.number().int().positive().default(3000),
   DATABASE_URL: z.string().url(),
   WORLD_TICK_MS: z.coerce.number().int().positive().default(5000),
-  GAME_DAY_REAL_SECONDS: z.coerce.number().int().positive().default(86400)
+  GAME_DAY_REAL_SECONDS: z.coerce.number().int().positive().default(86400),
+  LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info')
 });
 
 export const config = ConfigSchema.parse(process.env);

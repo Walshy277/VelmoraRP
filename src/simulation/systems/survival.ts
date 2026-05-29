@@ -13,25 +13,63 @@ export const survivalSystem: SimulationSystem = {
             WHEN hunger >= 90 OR thirst >= 90 THEN GREATEST(0, health - 2)
             ELSE health
           END
-        WHERE status = 'alive'
+        WHERE status = 'active'
       `
     );
 
-    const deathResult = await client.query(
+    const injuryResult = await client.query(
       `
-        UPDATE characters
-        SET status = 'dead', died_at = now()
-        WHERE status = 'alive'
-          AND health <= 0
+        WITH newly_incapacitated AS (
+          UPDATE characters
+          SET status = 'incapacitated'
+          WHERE status = 'active'
+            AND health <= 0
+          RETURNING id
+        ),
+        injuries AS (
+          INSERT INTO character_injuries (
+            character_id,
+            kind,
+            severity,
+            efficiency_penalty,
+            movement_penalty,
+            influence_penalty,
+            recovery_started_at
+          )
+          SELECT
+            id,
+            'exhaustion',
+            70,
+            0.750,
+            0.650,
+            0.150,
+            now()
+          FROM newly_incapacitated
+          RETURNING character_id
+        )
+        INSERT INTO character_setbacks (
+          character_id,
+          setback_type,
+          summary,
+          reputation_delta,
+          influence_delta
+        )
+        SELECT
+          character_id,
+          'incapacitation',
+          'Character was incapacitated by survival pressure.',
+          0,
+          -5
+        FROM injuries
       `
     );
 
     return {
       system: 'survival',
       processed: survivalResult.rowCount ?? 0,
-      events: deathResult.rowCount ?? 0,
+      events: injuryResult.rowCount ?? 0,
       metrics: {
-        deaths: deathResult.rowCount ?? 0
+        incapacitations: injuryResult.rowCount ?? 0
       }
     };
   }
