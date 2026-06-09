@@ -1,5 +1,6 @@
 import type { PoolClient } from 'pg';
 import { pool } from '../db/pool.js';
+import { beginTransaction, commitTransaction, rollbackTransaction } from '../db/transactions.js';
 import { hashPassword } from './passwords.js';
 import { startDayOneIfFirstPlayerAfterCreator } from '../world/dayOne.js';
 
@@ -31,7 +32,7 @@ export async function registerAccount(input: {
   const client = await pool.connect();
 
   try {
-    await client.query('BEGIN');
+    await beginTransaction(client);
 
     const isCreator = await shouldCreateCreatorAccount(client);
     const passwordHash = await hashPassword(input.password);
@@ -53,7 +54,7 @@ export async function registerAccount(input: {
     const account = result.rows[0];
     const dayOneStarted = await startDayOneIfFirstPlayerAfterCreator(client, account.id);
 
-    await client.query('COMMIT');
+    await commitTransaction(client);
 
     return {
       id: account.id,
@@ -63,7 +64,7 @@ export async function registerAccount(input: {
       dayOneStarted
     };
   } catch (error) {
-    await client.query('ROLLBACK');
+    await rollbackTransaction(client);
 
     if (
       typeof error === 'object' &&

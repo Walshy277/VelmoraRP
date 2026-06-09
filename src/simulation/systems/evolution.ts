@@ -1,6 +1,5 @@
 import type { SimulationSystem } from '../types.js';
-import { GROUP_EVOLUTION_ORDER, canEvolveTo } from '../../domain/society.js';
-import { recordHistoricalEvent } from '../../events/historicalEvents.js';
+import { GROUP_EVOLUTION_ORDER } from '../../domain/society.js';
 
 interface EvolutionCandidate {
   groupId: string;
@@ -16,18 +15,21 @@ interface EvolutionCandidate {
   ticksSinceFounded: number;
 }
 
-const EVOLUTION_THRESHOLDS: Record<string, {
-  targetType: string;
-  minMembers: number;
-  minSettlements: number;
-  minInstitutions: number;
-  minKnowledge: number;
-  minTerritoryRegions: number;
-  minAllies: number;
-  minGovernanceKeys: number;
-  minTicks: number;
-  description: string;
-}> = {
+const EVOLUTION_THRESHOLDS: Record<
+  string,
+  {
+    targetType: string;
+    minMembers: number;
+    minSettlements: number;
+    minInstitutions: number;
+    minKnowledge: number;
+    minTerritoryRegions: number;
+    minAllies: number;
+    minGovernanceKeys: number;
+    minTicks: number;
+    description: string;
+  }
+> = {
   group_clan: {
     targetType: 'clan',
     minMembers: 5,
@@ -160,14 +162,22 @@ function checkEligibility(candidate: EvolutionCandidate): { eligible: boolean; t
   }
 
   const failures: string[] = [];
-  if (candidate.activeMembers < thresholds.minMembers) failures.push(`members (${candidate.activeMembers}/${thresholds.minMembers})`);
-  if (candidate.settlementCount < thresholds.minSettlements) failures.push(`settlements (${candidate.settlementCount}/${thresholds.minSettlements})`);
-  if (candidate.institutionCount < thresholds.minInstitutions) failures.push(`institutions (${candidate.institutionCount}/${thresholds.minInstitutions})`);
-  if (candidate.knowledgeCount < thresholds.minKnowledge) failures.push(`knowledge (${candidate.knowledgeCount}/${thresholds.minKnowledge})`);
-  if (candidate.territoryRegions < thresholds.minTerritoryRegions) failures.push(`territory regions (${candidate.territoryRegions}/${thresholds.minTerritoryRegions})`);
-  if (candidate.allianceCount < thresholds.minAllies) failures.push(`allies (${candidate.allianceCount}/${thresholds.minAllies})`);
-  if (candidate.governanceKeys < thresholds.minGovernanceKeys) failures.push(`governance rules (${candidate.governanceKeys}/${thresholds.minGovernanceKeys})`);
-  if (candidate.ticksSinceFounded < thresholds.minTicks) failures.push(`age (${candidate.ticksSinceFounded}/${thresholds.minTicks} ticks)`);
+  if (candidate.activeMembers < thresholds.minMembers)
+    failures.push(`members (${candidate.activeMembers}/${thresholds.minMembers})`);
+  if (candidate.settlementCount < thresholds.minSettlements)
+    failures.push(`settlements (${candidate.settlementCount}/${thresholds.minSettlements})`);
+  if (candidate.institutionCount < thresholds.minInstitutions)
+    failures.push(`institutions (${candidate.institutionCount}/${thresholds.minInstitutions})`);
+  if (candidate.knowledgeCount < thresholds.minKnowledge)
+    failures.push(`knowledge (${candidate.knowledgeCount}/${thresholds.minKnowledge})`);
+  if (candidate.territoryRegions < thresholds.minTerritoryRegions)
+    failures.push(`territory regions (${candidate.territoryRegions}/${thresholds.minTerritoryRegions})`);
+  if (candidate.allianceCount < thresholds.minAllies)
+    failures.push(`allies (${candidate.allianceCount}/${thresholds.minAllies})`);
+  if (candidate.governanceKeys < thresholds.minGovernanceKeys)
+    failures.push(`governance rules (${candidate.governanceKeys}/${thresholds.minGovernanceKeys})`);
+  if (candidate.ticksSinceFounded < thresholds.minTicks)
+    failures.push(`age (${candidate.ticksSinceFounded}/${thresholds.minTicks} ticks)`);
 
   if (failures.length > 0) {
     return { eligible: false, reason: `Insufficient: ${failures.join(', ')}.` };
@@ -204,7 +214,7 @@ export const evolutionSystem: SimulationSystem = {
     let events = 0;
 
     for (const candidate of candidates) {
-      const { eligible, targetType, reason } = checkEligibility(candidate);
+      const { eligible, targetType } = checkEligibility(candidate);
 
       if (!eligible || !targetType) {
         continue;
