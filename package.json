@@ -12,7 +12,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "prepare": "husky",
-    "db:migrate": "node -e \"require('child_process').execSync('psql ' + process.env.DATABASE_URL + ' -f database/schema.sql', {stdio:'inherit'})\""
+    "db:migrate": "node -e \"require('child_process').execSync('psql ' + process.env.DATABASE_URL + ' -f database/schema.sql', {stdio:'inherit'})\"",
+    "db:setup": "tsx scripts/setup-db.ts"
   },
   "dependencies": {
     "dotenv": "^16.4.7",
