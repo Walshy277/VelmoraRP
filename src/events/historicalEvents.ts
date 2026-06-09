@@ -1,8 +1,10 @@
+import type { PoolClient } from 'pg';
 import { pool } from '../db/pool.js';
 import type { HistoricalEventInput } from '../db/types.js';
 
-export async function recordHistoricalEvent(input: HistoricalEventInput): Promise<void> {
-  await pool.query(
+export async function recordHistoricalEvent(input: HistoricalEventInput, client?: PoolClient): Promise<void> {
+  const db = client ?? pool;
+  await db.query(
     `
       INSERT INTO historical_events (
         tick_number,

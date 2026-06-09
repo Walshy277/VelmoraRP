@@ -6,11 +6,8 @@ export const survivalSystem: SimulationSystem = {
     const survivalResult = await client.query(
       `
         UPDATE characters
-        SET
-          hunger = LEAST(100, hunger + 1),
-          thirst = LEAST(100, thirst + 2),
-          health = CASE
-            WHEN hunger >= 90 OR thirst >= 90 THEN GREATEST(0, health - 2)
+        SET health = CASE
+            WHEN health > 0 THEN GREATEST(0, health - 1)
             ELSE health
           END
         WHERE status = 'active'

@@ -53,8 +53,16 @@ const clientState = {
 
 let pulse = 0;
 
+const textCache = new Map();
+
 function text(selector, value) {
-  const node = document.querySelector(selector);
+  let node = textCache.get(selector);
+  if (!node) {
+    node = document.querySelector(selector);
+    if (node) {
+      textCache.set(selector, node);
+    }
+  }
   if (node) {
     node.textContent = value;
   }

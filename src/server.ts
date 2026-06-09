@@ -1,4 +1,5 @@
 import express from 'express';
+import helmet from 'helmet';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { config } from './config.js';
@@ -14,12 +15,16 @@ const app = express();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicPath = path.resolve(__dirname, '..', 'public');
 
+app.use(helmet());
 app.use(express.json());
 app.use(express.static(publicPath));
 app.use(authRouter);
-app.use(devRouter);
 app.use(healthRouter);
 app.use(worldRouter);
+
+if (config.NODE_ENV !== 'production') {
+  app.use(devRouter);
+}
 
 app.use((error: unknown, _request: express.Request, response: express.Response, _next: express.NextFunction) => {
   logger.error({ err: error }, 'Unhandled request error');
@@ -30,10 +35,10 @@ const server = app.listen(config.PORT, () => {
   logger.info({ port: config.PORT }, 'VelmoraRP server listening');
 });
 
-const tickLoop = startTickLoop(config.WORLD_TICK_MS);
+const stopTickLoop = startTickLoop(config.WORLD_TICK_MS);
 
 async function shutdown(): Promise<void> {
-  clearInterval(tickLoop);
+  stopTickLoop();
   server.close();
   await closeDatabase();
 }

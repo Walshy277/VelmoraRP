@@ -12,11 +12,13 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "prepare": "husky",
-    "db:migrate": "psql \"$DATABASE_URL\" -f database/schema.sql"
+    "db:migrate": "node -e \"require('child_process').execSync('psql ' + process.env.DATABASE_URL + ' -f database/schema.sql', {stdio:'inherit'})\""
   },
   "dependencies": {
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
+    "helmet": "^8.0.0",
     "pg": "^8.13.1",
     "pino": "^9.6.0",
     "zod": "^3.24.1"

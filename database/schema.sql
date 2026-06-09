@@ -113,8 +113,6 @@ CREATE TABLE characters (
   name TEXT NOT NULL,
   status character_status NOT NULL DEFAULT 'active',
   age_days INTEGER NOT NULL DEFAULT 0,
-  hunger INTEGER NOT NULL DEFAULT 0 CHECK (hunger >= 0 AND hunger <= 100),
-  thirst INTEGER NOT NULL DEFAULT 0 CHECK (thirst >= 0 AND thirst <= 100),
   health INTEGER NOT NULL DEFAULT 100 CHECK (health >= 0 AND health <= 100),
   position_x NUMERIC(12, 3) NOT NULL DEFAULT 0,
   position_y NUMERIC(12, 3) NOT NULL DEFAULT 0,
@@ -358,6 +356,7 @@ CREATE INDEX idx_player_actions_character_id ON player_actions(character_id);
 CREATE INDEX idx_territory_claims_region_id ON territory_claims(region_id);
 CREATE INDEX idx_historical_events_tick_number ON historical_events(tick_number);
 CREATE INDEX idx_historical_events_region_id ON historical_events(region_id);
+CREATE INDEX idx_historical_events_created_at ON historical_events(created_at DESC);
 CREATE INDEX idx_simulation_system_runs_tick_number ON simulation_system_runs(tick_number);
 CREATE INDEX idx_progression_rates_group_tick ON progression_rates(group_id, calculated_tick DESC);
 CREATE INDEX idx_progression_rates_settlement_tick ON progression_rates(settlement_id, calculated_tick DESC);

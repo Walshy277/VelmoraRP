@@ -20,8 +20,6 @@ export interface Character {
   name: string;
   status: CharacterStatus;
   ageDays: number;
-  hunger: number;
-  thirst: number;
   health: number;
   position: Position;
 }

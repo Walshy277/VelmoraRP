@@ -72,17 +72,20 @@ export async function runWorldTick(systems: SimulationSystem[] = simulationSyste
 
     await commitTransaction(client);
 
-    await recordHistoricalEvent({
-      tickNumber,
-      scope: 'world',
-      eventType: 'world_tick_completed',
-      summary: `World tick ${tickNumber} completed.`,
-      payload: {
-        systems: systemResults,
-        gameDay,
-        durationMs
-      }
-    });
+    await recordHistoricalEvent(
+      {
+        tickNumber,
+        scope: 'world',
+        eventType: 'world_tick_completed',
+        summary: `World tick ${tickNumber} completed.`,
+        payload: {
+          systems: systemResults,
+          gameDay,
+          durationMs
+        }
+      },
+      client
+    );
 
     return {
       tickNumber,
@@ -114,10 +117,34 @@ export async function runWorldTick(systems: SimulationSystem[] = simulationSyste
   }
 }
 
-export function startTickLoop(intervalMs: number): NodeJS.Timeout {
-  return setInterval(() => {
-    runWorldTick().catch((error: unknown) => {
+export function startTickLoop(intervalMs: number): () => void {
+  let active = true;
+  let timeoutId: NodeJS.Timeout | null = null;
+
+  async function scheduleNext() {
+    if (!active) return;
+
+    const startTime = Date.now();
+    try {
+      await runWorldTick();
+    } catch (error: unknown) {
       logger.error({ err: error }, 'World tick failed');
-    });
-  }, intervalMs);
+    }
+
+    if (!active) return;
+
+    const elapsed = Date.now() - startTime;
+    const delay = Math.max(0, intervalMs - elapsed);
+    timeoutId = setTimeout(scheduleNext, delay);
+  }
+
+  timeoutId = setTimeout(scheduleNext, intervalMs);
+
+  return () => {
+    active = false;
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+      timeoutId = null;
+    }
+  };
 }

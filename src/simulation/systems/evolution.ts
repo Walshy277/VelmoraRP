@@ -1,3 +1,4 @@
+import type { PoolClient } from 'pg';
 import type { SimulationSystem } from '../types.js';
 import { GROUP_EVOLUTION_ORDER } from '../../domain/society.js';
 
@@ -92,7 +93,7 @@ const EVOLUTION_THRESHOLDS: Record<
   }
 };
 
-async function findEvolutionCandidates(client: import('pg').PoolClient): Promise<EvolutionCandidate[]> {
+async function findEvolutionCandidates(client: PoolClient): Promise<EvolutionCandidate[]> {
   const result = await client.query<EvolutionCandidate>(
     `
       SELECT
@@ -104,7 +105,7 @@ async function findEvolutionCandidates(client: import('pg').PoolClient): Promise
         COALESCE(knowledge_stats.knowledge_count, 0) AS "knowledgeCount",
         COALESCE(territory_stats.region_count, 0) AS "territoryRegions",
         COALESCE(alliance_stats.alliance_count, 0) AS "allianceCount",
-        COALESCE(jsonb_object_keys(g.governance)::int, 0) AS "governanceKeys",
+        COALESCE((SELECT COUNT(*)::int FROM jsonb_object_keys(g.governance)), 0) AS "governanceKeys",
         GREATEST(0, EXTRACT(EPOCH FROM (now() - g.founded_at)) / 5000)::int AS "ticksSinceFounded"
       FROM groups g
       LEFT JOIN LATERAL (
@@ -187,7 +188,7 @@ function checkEligibility(candidate: EvolutionCandidate): { eligible: boolean; t
 }
 
 async function promoteGroup(
-  client: import('pg').PoolClient,
+  client: PoolClient,
   groupId: string,
   targetType: string,
   tickNumber: number

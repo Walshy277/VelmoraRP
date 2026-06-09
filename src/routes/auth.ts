@@ -1,8 +1,17 @@
 import { Router } from 'express';
+import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
 import { DuplicateEmailError, registerAccount } from '../auth/accounts.js';
 
 export const authRouter = Router();
+
+const registerLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'rate_limit_exceeded' }
+});
 
 const RegisterSchema = z.object({
   email: z.string().email().max(320),
@@ -10,7 +19,7 @@ const RegisterSchema = z.object({
   password: z.string().min(10).max(256)
 });
 
-authRouter.post('/auth/register', async (request, response, next) => {
+authRouter.post('/auth/register', registerLimiter, async (request, response, next) => {
   const parsed = RegisterSchema.safeParse(request.body);
 
   if (!parsed.success) {
