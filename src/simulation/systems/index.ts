@@ -1,4 +1,5 @@
 import { constructionSystem } from './construction.js';
+import { evolutionSystem } from './evolution.js';
 import { injuriesSystem } from './injuries.js';
 import { knowledgeSystem } from './knowledge.js';
 import { playerActionsSystem } from './playerActions.js';
@@ -16,6 +17,7 @@ const unorderedSimulationSystems: SimulationSystem[] = [
   survivalSystem,
   injuriesSystem,
   progressionSystem,
+  evolutionSystem,
   constructionSystem,
   territorySystem,
   knowledgeSystem,

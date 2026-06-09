@@ -7,6 +7,7 @@ export type SimulationSystemName =
   | 'survival'
   | 'injuries'
   | 'progression'
+  | 'evolution'
   | 'construction'
   | 'territory'
   | 'knowledge'

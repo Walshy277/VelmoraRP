@@ -13,7 +13,7 @@ VelmoraRP is designed as a browser game. The Express server serves the first bro
 - `docs/NEXT_10_COMMITS.md`: recommended implementation roadmap.
 - `src/server.ts`: Express API entrypoint.
 - `src/simulation/tickEngine.ts`: world tick loop.
-- `src/simulation/systems`: placeholder simulation systems.
+- `src/simulation/systems`: simulation systems for survival, resources, knowledge, construction, territory, politics, and evolution.
 - `src/routes`: basic health and world query routes.
 
 ## Local Setup

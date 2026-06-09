@@ -13,7 +13,7 @@ CREATE TYPE injury_kind AS ENUM (
 );
 CREATE TYPE region_status AS ENUM ('active', 'hibernating', 'archived');
 CREATE TYPE tick_status AS ENUM ('running', 'completed', 'failed');
-CREATE TYPE group_type AS ENUM ('family', 'clan', 'tribe', 'guild', 'religion', 'state', 'empire');
+CREATE TYPE group_type AS ENUM ('group', 'clan', 'alliance', 'faction', 'dynasty', 'empire');
 CREATE TYPE membership_role AS ENUM ('member', 'elder', 'leader', 'founder');
 CREATE TYPE claim_control_type AS ENUM ('presence', 'construction', 'political', 'legal');
 CREATE TYPE event_scope AS ENUM ('character', 'settlement', 'group', 'region', 'world');

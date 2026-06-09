@@ -21,6 +21,7 @@ Simulation Tick Engine
   +--> survival
   +--> injuries
   +--> progression
+  +--> evolution
   +--> construction
   +--> territory
   +--> knowledge
@@ -204,10 +205,11 @@ This keeps the game real time while making civilization-scale progress require p
 3. survival
 4. injuries
 5. progression
-6. construction
-7. territory
-8. knowledge
-9. politics
+6. evolution
+7. construction
+8. territory
+9. knowledge
+10. politics
 ```
 
 This order is intentionally conservative:
@@ -216,6 +218,7 @@ This order is intentionally conservative:
 - Resource and survival pressure update before social systems.
 - Injuries and recovery are resolved before active social capacity is calculated.
 - Progression rates are recalculated before systems consume labor, knowledge, or territory multipliers.
+- Evolution is checked after progression rates are available, promoting groups that meet thresholds.
 - Construction changes territory possibilities.
 
 ## Defeat And Continuity

@@ -7,26 +7,248 @@
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
+    <header class="top-bar">
+      <a class="brand" href="/" aria-label="VelmoraRP home">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span>
+          <strong>Velmora RP</strong>
+          <small>Write history. Build civilizations.</small>
+        </span>
+      </a>
+      <nav class="primary-nav" aria-label="Primary">
+        <a href="#world-map">World</a>
+        <a href="#chronicles">Chronicles</a>
+        <a href="#knowledge">Knowledge</a>
+        <a href="#society">Society</a>
+      </nav>
+      <div class="era-clock">
+        <span id="world-state">Pre-history</span>
+        <strong id="game-day">No calendar</strong>
+      </div>
+    </header>
+
     <main class="game-shell">
-      <section class="world-stage" aria-label="World viewport">
-        <canvas id="world-canvas" width="1280" height="720"></canvas>
-        <div class="hud hud-top">
+      <aside class="left-rail" aria-label="Navigation and location">
+        <section class="rail-section">
+          <p class="label">Navigation</p>
+          <a class="rail-link active" href="#home"><span aria-hidden="true">H</span> Home</a>
+          <button class="rail-link" data-action="character" type="button">
+            <span aria-hidden="true">C</span> My Character
+          </button>
+          <button class="rail-link" data-action="family" type="button">
+            <span aria-hidden="true">F</span> My Family
+          </button>
+          <button class="rail-link" data-action="society" type="button">
+            <span aria-hidden="true">S</span> My Society
+          </button>
+          <button class="rail-link" data-action="trade" type="button"><span aria-hidden="true">T</span> Trade</button>
+          <button class="rail-link" data-action="learn" type="button"><span aria-hidden="true">K</span> Learn</button>
+          <button class="rail-link" data-action="govern" type="button"><span aria-hidden="true">G</span> Govern</button>
+          <button class="rail-link" data-action="chronicle" type="button">
+            <span aria-hidden="true">W</span> Write Chronicle
+          </button>
+        </section>
+
+        <section class="rail-section location-card">
+          <p class="label">Current Location</p>
+          <h2 id="current-location-name">Unclaimed Starting Region</h2>
+          <p id="current-location-detail">
+            A fertile river basin suitable for the first camps, farms, roads, and shrines.
+          </p>
+          <button class="secondary-button" data-action="inspect-region" type="button">Inspect Region</button>
+        </section>
+
+        <section class="rail-section">
+          <p class="label">Quick Links</p>
+          <a class="rail-link" href="#world-map">World Map</a>
+          <a class="rail-link" href="#knowledge">Technology Tree</a>
+          <button class="rail-link" data-action="culture" type="button">Culture Encyclopedia</button>
+          <a class="rail-link" href="#events">Active Events</a>
+        </section>
+      </aside>
+
+      <section class="content" id="home">
+        <section class="parchment hero-panel" aria-label="Player overview">
+          <div class="banner" aria-hidden="true"><span></span></div>
           <div>
-            <p class="label">World State</p>
-            <h1 id="world-state">Pre-history</h1>
+            <p class="label">Foundation State</p>
+            <h1 id="player-heading">No Character Claimed</h1>
+            <p id="player-summary">Register an account to become part of the first playable generation.</p>
           </div>
-          <div class="day-pill" id="game-day">No calendar</div>
-        </div>
-        <div class="hud hud-bottom">
-          <button id="explore-button" type="button">Explore</button>
-          <button id="forage-button" type="button">Forage</button>
-          <button id="camp-button" type="button">Camp</button>
-        </div>
+          <dl class="hero-stats">
+            <div>
+              <dt>Reputation</dt>
+              <dd id="reputation-stat">Unwritten</dd>
+            </div>
+            <div>
+              <dt>Influence</dt>
+              <dd id="influence-stat">0</dd>
+            </div>
+            <div>
+              <dt>Learning</dt>
+              <dd id="learning-stat">Oral</dd>
+            </div>
+          </dl>
+          <div class="seal" aria-hidden="true"></div>
+        </section>
+
+        <section class="dashboard-grid">
+          <article class="panel location-overview">
+            <p class="label">Settlement</p>
+            <h2 id="settlement-name">First Camp Site</h2>
+            <p class="subtle" id="settlement-summary">
+              No city exists yet. Shelter, storage, and shared knowledge must come first.
+            </p>
+            <div class="settlement-scene" aria-hidden="true">
+              <span class="sun"></span>
+              <span class="ridge ridge-a"></span>
+              <span class="ridge ridge-b"></span>
+              <span class="city-shape"></span>
+            </div>
+            <dl class="compact-stats">
+              <div>
+                <dt>Population</dt>
+                <dd id="population-stat">0 registered</dd>
+              </div>
+              <div>
+                <dt>Culture</dt>
+                <dd id="culture-stat">Unformed</dd>
+              </div>
+              <div>
+                <dt>Religion</dt>
+                <dd id="religion-stat">No shared rites</dd>
+              </div>
+              <div>
+                <dt>Government</dt>
+                <dd id="government-stat">None</dd>
+              </div>
+              <div>
+                <dt>Prosperity</dt>
+                <dd id="prosperity-stat">Subsistence</dd>
+              </div>
+              <div>
+                <dt>Security</dt>
+                <dd id="security-stat">Unknown</dd>
+              </div>
+            </dl>
+          </article>
+
+          <article class="panel actions-panel">
+            <p class="label">Available Actions</p>
+            <div class="action-grid">
+              <button id="explore-button" class="action-button" data-action="travel" type="button">
+                <span>Travel</span>
+                <small>Move to a new region</small>
+              </button>
+              <button id="forage-button" class="action-button" data-action="forage" type="button">
+                <span>Forage</span>
+                <small>Gather food and fiber</small>
+              </button>
+              <button id="camp-button" class="action-button" data-action="camp" type="button">
+                <span>Camp</span>
+                <small>Create shelter and safety</small>
+              </button>
+              <button class="action-button" data-action="teach" type="button">
+                <span>Teach</span>
+                <small>Transmit knowledge</small>
+              </button>
+              <button class="action-button" data-action="trade" type="button">
+                <span>Trade</span>
+                <small>Barter with nearby groups</small>
+              </button>
+              <button class="action-button" data-action="govern" type="button">
+                <span>Govern</span>
+                <small>Shape laws and legitimacy</small>
+              </button>
+              <button class="action-button" data-action="craft" type="button">
+                <span>Craft</span>
+                <small>Create tools and goods</small>
+              </button>
+              <button class="action-button" data-action="chronicle" type="button">
+                <span>Write Chronicle</span>
+                <small>Record lasting history</small>
+              </button>
+            </div>
+            <p id="action-result" class="status-text">
+              Actions update the local prototype state until queued world actions are wired to the API.
+            </p>
+          </article>
+
+          <article class="panel world-map-card" id="world-map">
+            <div class="panel-heading">
+              <p class="label">World Map</p>
+              <button id="map-reset-button" class="icon-button" type="button" aria-label="Center map">+</button>
+            </div>
+            <canvas id="world-canvas" width="900" height="520" aria-label="Persistent world map"></canvas>
+            <button class="map-link" data-action="focus-map" type="button">Focus World Map</button>
+          </article>
+        </section>
+
+        <section class="lower-grid">
+          <article class="panel" id="chronicles">
+            <div class="panel-heading">
+              <p class="label">World Chronicle</p>
+              <span id="history-count" class="count-pill">Unknown</span>
+            </div>
+            <ol id="history-list" class="history-list"></ol>
+          </article>
+
+          <article class="panel">
+            <p class="label">Core Loops</p>
+            <div class="loop-list">
+              <div>
+                <strong>Survive</strong>
+                <span>Gather, forage, build shelter, manage immediate threats.</span>
+              </div>
+              <div>
+                <strong>Settle</strong>
+                <span>Form groups, specialize roles, construct infrastructure.</span>
+              </div>
+              <div>
+                <strong>Civilize</strong>
+                <span>Teach knowledge, govern territory, preserve institutions.</span>
+              </div>
+            </div>
+          </article>
+
+          <article class="panel" id="knowledge">
+            <p class="label">Knowledge Discoveries</p>
+            <ul class="discovery-list">
+              <li><strong>Basic Foraging</strong><span>Known through oral teaching</span></li>
+              <li><strong>Stone Toolmaking</strong><span>Requires stone and wood</span></li>
+              <li><strong>Simple Shelter</strong><span>Shared by builders</span></li>
+              <li><strong>Calendar</strong><span>Created only after Day 1 begins</span></li>
+              <li><strong>Writing</strong><span>Locked until a society preserves symbols</span></li>
+            </ul>
+          </article>
+
+          <article class="panel" id="society">
+            <p class="label">Society Pulse</p>
+            <dl class="compact-stats">
+              <div>
+                <dt>Calendar</dt>
+                <dd id="calendar-status">Checking...</dd>
+              </div>
+              <div>
+                <dt>Regions</dt>
+                <dd id="region-count">Unknown</dd>
+              </div>
+              <div>
+                <dt>Civilizations</dt>
+                <dd id="civilization-count">0</dd>
+              </div>
+              <div>
+                <dt>Cultures</dt>
+                <dd id="culture-count">0</dd>
+              </div>
+            </dl>
+          </article>
+        </section>
       </section>
 
-      <aside class="side-panel" aria-label="Player and world controls">
-        <section class="panel-section">
-          <p class="label">Registration</p>
+      <aside class="right-rail" aria-label="Account and world activity">
+        <section class="panel account-panel">
+          <p class="label">Create Account</p>
           <form id="register-form">
             <label>
               Email
@@ -45,30 +267,28 @@
           <p id="registration-result" class="status-text">The first account becomes creator. The next begins Day 1.</p>
         </section>
 
-        <section class="panel-section">
-          <p class="label">Known World</p>
-          <dl class="stats">
-            <div>
-              <dt>Calendar</dt>
-              <dd id="calendar-status">Checking...</dd>
-            </div>
-            <div>
-              <dt>Regions</dt>
-              <dd id="region-count">Unknown</dd>
-            </div>
-            <div>
-              <dt>History</dt>
-              <dd id="history-count">Unknown</dd>
-            </div>
-          </dl>
+        <section class="panel">
+          <p class="label">World News</p>
+          <ul id="world-news-list" class="news-list"></ul>
         </section>
 
-        <section class="panel-section">
-          <p class="label">Recent History</p>
-          <ol id="history-list" class="history-list"></ol>
+        <section class="panel" id="events">
+          <p class="label">Active Events</p>
+          <div id="active-events-list" class="event-stack"></div>
         </section>
       </aside>
     </main>
+
+    <footer class="bottom-bar">
+      <span id="footer-civilizations">Civilizations: 0</span>
+      <span id="footer-cultures">Cultures: 0</span>
+      <span id="footer-polities">Active polities: 0</span>
+      <span id="footer-population">Registered population: 0</span>
+      <span id="footer-age">World age: awaiting Day 1</span>
+      <button data-action="rules" type="button">Rules</button>
+      <button data-action="wiki" type="button">Wiki</button>
+      <button data-action="support" type="button">Support</button>
+    </footer>
 
     <script type="module" src="/app.js"></script>
   </body>

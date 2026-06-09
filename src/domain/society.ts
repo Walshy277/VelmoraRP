@@ -1,7 +1,15 @@
 import type { Position, UUID } from './ids.js';
 
 export type CharacterStatus = 'active' | 'incapacitated' | 'imprisoned' | 'exiled' | 'retired' | 'missing';
-export type GroupType = 'family' | 'clan' | 'tribe' | 'guild' | 'religion' | 'state' | 'empire';
+export type GroupType = 'group' | 'clan' | 'alliance' | 'faction' | 'dynasty' | 'empire';
+
+export const GROUP_EVOLUTION_ORDER: GroupType[] = ['group', 'clan', 'alliance', 'faction', 'dynasty', 'empire'];
+
+export function canEvolveTo(current: GroupType, target: GroupType): boolean {
+  const currentIdx = GROUP_EVOLUTION_ORDER.indexOf(current);
+  const targetIdx = GROUP_EVOLUTION_ORDER.indexOf(target);
+  return targetIdx === currentIdx + 1;
+}
 export type MembershipRole = 'member' | 'elder' | 'leader' | 'founder';
 
 export interface Character {

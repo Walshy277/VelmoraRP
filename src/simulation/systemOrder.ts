@@ -6,6 +6,7 @@ export const SYSTEM_EXECUTION_ORDER = [
   'survival',
   'injuries',
   'progression',
+  'evolution',
   'construction',
   'territory',
   'knowledge',
