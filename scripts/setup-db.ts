@@ -43,6 +43,19 @@ async function setupDatabase() {
     console.log('Granting privileges...');
     await superPool.query(`GRANT ALL PRIVILEGES ON DATABASE ${TARGET_DB} TO ${TARGET_USER}`);
     console.log('Privileges granted.');
+
+    // Grant schema creation rights (PostgreSQL 15+ restricts public schema by default)
+    const targetSuperPool = new pg.Pool({
+      connectionString: SUPERUSER_URL.replace(/\/[^/]+$/, `/${TARGET_DB}`),
+      ssl: false
+    });
+    try {
+      console.log('Granting schema privileges...');
+      await targetSuperPool.query(`GRANT CREATE ON SCHEMA public TO ${TARGET_USER}`);
+      console.log('Schema privileges granted.');
+    } finally {
+      await targetSuperPool.end();
+    }
   } catch (error) {
     console.error('Setup failed:', error);
     throw error;
