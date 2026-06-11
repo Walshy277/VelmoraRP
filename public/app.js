@@ -1,16 +1,160 @@
-const canvas = document.querySelector('#world-canvas');
+const apiBase = '';
+const tokenKey = 'velmora_token';
+const accountKey = 'velmora_account';
+
+let sessionToken = localStorage.getItem(tokenKey) || null;
+let sessionAccount = JSON.parse(localStorage.getItem(accountKey) || 'null');
+let myCharacters = [];
+let activeCharacterId = localStorage.getItem('velmora_active_character') || null;
+
+const $ = (sel) => document.querySelector(sel);
+const $$ = (sel) => document.querySelectorAll(sel);
+
+async function api(method, path, body) {
+  const opts = {
+    method,
+    headers: { 'Content-Type': 'application/json' }
+  };
+  if (sessionToken) opts.headers['Authorization'] = `Bearer ${sessionToken}`;
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(`${apiBase}${path}`, opts);
+  const data = await res.json();
+  return { ok: res.ok, status: res.status, data };
+}
+
+function toast(message, type = 'info') {
+  const container = $('#toast-container');
+  if (!container) return;
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = message;
+  container.appendChild(el);
+  setTimeout(() => {
+    el.remove();
+  }, 4000);
+}
+
+function saveSession(token, account) {
+  sessionToken = token;
+  sessionAccount = account;
+  localStorage.setItem(tokenKey, token);
+  localStorage.setItem(accountKey, JSON.stringify(account));
+  renderAuthState();
+}
+
+function clearSession() {
+  sessionToken = null;
+  sessionAccount = null;
+  activeCharacterId = null;
+  localStorage.removeItem(tokenKey);
+  localStorage.removeItem(accountKey);
+  localStorage.removeItem('velmora_active_character');
+  myCharacters = [];
+  renderAuthState();
+}
+
+function renderAuthState() {
+  const accountPanel = $('#account-panel');
+  const sessionPanel = $('#session-panel');
+  if (!accountPanel || !sessionPanel) return;
+
+  if (sessionAccount) {
+    accountPanel.style.display = 'none';
+    sessionPanel.style.display = '';
+    $('#session-display-name').textContent = sessionAccount.displayName;
+    const charsText =
+      myCharacters.length > 0 ? `Characters: ${myCharacters.map((c) => c.name).join(', ')}` : 'No characters yet.';
+    $('#session-characters').textContent = charsText;
+  } else {
+    accountPanel.style.display = '';
+    sessionPanel.style.display = 'none';
+  }
+}
+
+const charDialog = $('#character-dialog');
+$('#show-create-character')?.addEventListener('click', () => {
+  $('#character-name').value = '';
+  charDialog.showModal();
+});
+$('#character-cancel')?.addEventListener('click', () => charDialog.close());
+$('#character-form')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const name = $('#character-name').value.trim();
+  if (!name) return;
+  const { ok, data } = await api('POST', '/characters', { name });
+  if (ok) {
+    toast(`Character ${data.character.name} created!`, 'success');
+    charDialog.close();
+    await loadMyCharacters();
+  } else {
+    toast(data.error || 'Failed to create character', 'error');
+  }
+});
+
+async function loadMyCharacters() {
+  if (!sessionToken) {
+    myCharacters = [];
+    return;
+  }
+  const { ok, data } = await api('GET', '/world/characters');
+  if (ok) {
+    myCharacters = (data.characters || []).filter((c) => c.account_id === sessionAccount.id);
+    if (myCharacters.length > 0 && !activeCharacterId) {
+      activeCharacterId = myCharacters[0].id;
+      localStorage.setItem('velmora_active_character', activeCharacterId);
+    }
+    renderAuthState();
+  }
+}
+
+$('#register-form')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const body = { email: fd.get('email'), displayName: fd.get('displayName'), password: fd.get('password') };
+  $('#auth-result').textContent = 'Registering...';
+  const { ok, data } = await api('POST', '/auth/register', body);
+  if (!ok) {
+    $('#auth-result').textContent = data.error || 'Registration failed.';
+    toast(data.error || 'Registration failed', 'error');
+    return;
+  }
+  toast('Account created! Log in to play.', 'success');
+  $('#auth-result').textContent = 'Account created. Log in above.';
+  e.target.reset();
+});
+
+$('#login-submit')?.addEventListener('click', async () => {
+  const email = $('#email').value;
+  const password = $('#password').value;
+  if (!email || !password) {
+    toast('Enter email and password.', 'error');
+    return;
+  }
+  $('#auth-result').textContent = 'Logging in...';
+  const { ok, data } = await api('POST', '/auth/login', { email, password });
+  if (!ok) {
+    $('#auth-result').textContent = data.error || 'Login failed.';
+    toast(data.error || 'Login failed', 'error');
+    return;
+  }
+  saveSession(data.token, data.account);
+  toast(`Welcome, ${data.account.displayName}!`, 'success');
+  $('#auth-result').textContent = 'Logged in.';
+  $('#email').value = '';
+  $('#password').value = '';
+  $('#display-name').value = '';
+  await loadMyCharacters();
+  await loadWorldState();
+});
+
+$('#logout-button')?.addEventListener('click', () => {
+  clearSession();
+  toast('Logged out.', 'info');
+  loadWorldState();
+});
+
+const canvas = $('#world-canvas');
 const context = canvas.getContext('2d');
-const worldState = document.querySelector('#world-state');
-const gameDay = document.querySelector('#game-day');
-const calendarStatus = document.querySelector('#calendar-status');
-const regionCount = document.querySelector('#region-count');
-const historyCount = document.querySelector('#history-count');
-const historyList = document.querySelector('#history-list');
-const registerForm = document.querySelector('#register-form');
-const registrationResult = document.querySelector('#registration-result');
-const actionResult = document.querySelector('#action-result');
-const worldNewsList = document.querySelector('#world-news-list');
-const activeEventsList = document.querySelector('#active-events-list');
 
 const foundationSites = [
   { x: 0.22, y: 0.57, name: 'Unclaimed River Basin', color: '#d2a448', size: 10, terrain: 'river plain' },
@@ -21,54 +165,16 @@ const foundationSites = [
 ];
 
 const terrainBands = ['#2d3f2f', '#334b39', '#53603d', '#777044', '#4f5f63', '#3b3328'];
-const actionCopy = {
-  travel: 'Scouted a nearby route. A map marker was added locally.',
-  forage: 'Foraging result recorded locally. Food systems still need queued server actions.',
-  camp: 'Camp preparation recorded locally. Construction persistence is the next backend step.',
-  teach: 'Teaching requires at least two characters and a knowledge transmission endpoint.',
-  trade: 'Trade requires two groups, local resources, and a barter action queue.',
-  govern: 'Governance unlocks after a society has members, legitimacy, and territory.',
-  craft: 'Crafting requires inventory records and recipe validation.',
-  chronicle: 'Chronicles become permanent when writing or oral-history recording is implemented.',
-  character: 'Characters unlock after successful account registration.',
-  family: 'Family lines unlock after character mortality and lineage records exist.',
-  society: 'Society pages unlock after groups, legitimacy, and territory exist.',
-  learn: 'Knowledge pages are represented by the Technology Tree panel until research routes are added.',
-  culture: 'Culture records unlock after repeated player rituals, language, law, and chronicle events.',
-  rules: 'Rules will be served as authored project documentation once a documentation route exists.',
-  wiki: 'Wiki pages will be generated from implemented systems and confirmed lore.',
-  support: 'Support will link to a real project contact or issue flow when configured.',
-  'inspect-region': 'This starting region has water, forage, wood, stone, and migration pressure.',
-  'focus-map': 'Map focused. Use Travel, Forage, or Camp to add local exploration signals.'
-};
-
-const clientState = {
-  calendar: null,
-  regions: [],
-  events: [],
-  localSignals: [],
-  lastAction: null,
-  apiOnline: false
-};
-
 let pulse = 0;
+const clientState = { calendar: null, regions: [], events: [], localSignals: [], apiOnline: false };
 
-const textCache = new Map();
-
-function text(selector, value) {
-  let node = textCache.get(selector);
-  if (!node) {
-    node = document.querySelector(selector);
-    if (node) {
-      textCache.set(selector, node);
-    }
-  }
-  if (node) {
-    node.textContent = value;
-  }
+function text(sel, val) {
+  const el = document.querySelector(sel);
+  if (el) el.textContent = val;
 }
 
 function resizeCanvas() {
+  if (!canvas) return;
   const rect = canvas.getBoundingClientRect();
   const scale = window.devicePixelRatio || 1;
   canvas.width = Math.max(1, Math.floor(rect.width * scale));
@@ -76,19 +182,8 @@ function resizeCanvas() {
   context.setTransform(scale, 0, 0, scale, 0, 0);
 }
 
-async function fetchJson(url) {
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`${url} returned ${response.status}`);
-  }
-  return response.json();
-}
-
 function getVisibleSites() {
-  if (clientState.regions.length === 0) {
-    return foundationSites;
-  }
-
+  if (clientState.regions.length === 0) return foundationSites;
   return clientState.regions.slice(0, 12).map((region, index) => {
     const base = foundationSites[index % foundationSites.length];
     return {
@@ -101,124 +196,18 @@ function getVisibleSites() {
   });
 }
 
-function drawCoast(width, height) {
-  context.save();
-  context.translate(width * 0.04, height * 0.1);
-  context.beginPath();
-  context.moveTo(width * 0.03, height * 0.42);
-
-  const points = [
-    [0.1, 0.24],
-    [0.2, 0.18],
-    [0.34, 0.21],
-    [0.43, 0.12],
-    [0.58, 0.2],
-    [0.7, 0.15],
-    [0.86, 0.28],
-    [0.91, 0.47],
-    [0.82, 0.62],
-    [0.69, 0.68],
-    [0.58, 0.83],
-    [0.42, 0.72],
-    [0.29, 0.79],
-    [0.18, 0.67],
-    [0.06, 0.62]
-  ];
-
-  for (const [x, y] of points) {
-    context.lineTo(width * x, height * y);
+function drawMap() {
+  if (!canvas) {
+    window.requestAnimationFrame(drawMap);
+    return;
   }
-
-  context.closePath();
-  context.fillStyle = '#314536';
-  context.fill();
-  context.clip();
-
-  for (let i = 0; i < 42; i += 1) {
-    const x = ((i * 137) % 1000) / 1000;
-    const y = ((i * 293) % 1000) / 1000;
-    const radius = 70 + ((i * 19) % 90);
-    const gradient = context.createRadialGradient(width * x, height * y, 0, width * x, height * y, radius);
-    gradient.addColorStop(0, `${terrainBands[i % terrainBands.length]}cc`);
-    gradient.addColorStop(1, 'rgba(20, 24, 18, 0)');
-    context.fillStyle = gradient;
-    context.fillRect(0, 0, width, height);
-  }
-
-  context.globalAlpha = 0.24;
-  context.strokeStyle = '#d8bd7a';
-  context.lineWidth = 1;
-  for (let i = 0; i < 16; i += 1) {
-    context.beginPath();
-    const y = height * (0.12 + i * 0.05);
-    context.moveTo(width * 0.08, y);
-    context.bezierCurveTo(width * 0.28, y + Math.sin(i) * 28, width * 0.54, y - 38, width * 0.88, y + 18);
-    context.stroke();
-  }
-
-  context.restore();
-}
-
-function drawRoute(from, to, width, height) {
-  context.save();
-  context.strokeStyle = 'rgba(235, 210, 148, 0.33)';
-  context.lineWidth = 2;
-  context.setLineDash([6, 8]);
-  context.beginPath();
-  context.moveTo(from.x * width, from.y * height);
-  context.quadraticCurveTo(width * 0.5, height * 0.45, to.x * width, to.y * height);
-  context.stroke();
-  context.restore();
-}
-
-function drawSite(point, width, height) {
-  const x = point.x * width;
-  const y = point.y * height;
-  const radius = point.size + Math.sin(pulse * 3 + point.x * 10) * 1.2;
-
-  context.save();
-  context.fillStyle = 'rgba(8, 9, 7, 0.5)';
-  context.beginPath();
-  context.arc(x, y + 2, radius * 2.5, 0, Math.PI * 2);
-  context.fill();
-
-  context.fillStyle = point.color;
-  context.strokeStyle = '#f0d998';
-  context.lineWidth = 2;
-  context.beginPath();
-  context.arc(x, y, radius, 0, Math.PI * 2);
-  context.fill();
-  context.stroke();
-
-  context.fillStyle = '#f5e8c9';
-  context.font = '12px Georgia, serif';
-  context.textAlign = 'center';
-  context.fillText(point.name, x, y + radius + 18);
-  context.restore();
-}
-
-function drawSignal(point, width, height) {
-  const x = point.x * width;
-  const y = point.y * height;
-  const radius = 7 + Math.sin(pulse * 4 + point.x) * 2;
-
-  context.save();
-  context.strokeStyle = 'rgba(245, 218, 139, 0.55)';
-  context.fillStyle = point.color;
-  context.lineWidth = 2;
-  context.beginPath();
-  context.arc(x, y, radius, 0, Math.PI * 2);
-  context.fill();
-  context.beginPath();
-  context.arc(x, y, radius * 3.2, 0, Math.PI * 2);
-  context.stroke();
-  context.restore();
-}
-
-function drawWorld() {
   const rect = canvas.getBoundingClientRect();
-  const width = rect.width;
-  const height = rect.height;
+  const width = rect.width,
+    height = rect.height;
+  if (width <= 0 || height <= 0) {
+    window.requestAnimationFrame(drawMap);
+    return;
+  }
   const sites = getVisibleSites();
   pulse += 0.01;
 
@@ -240,21 +229,170 @@ function drawWorld() {
   }
   context.restore();
 
-  drawCoast(width, height);
+  context.save();
+  context.translate(width * 0.04, height * 0.1);
+  context.beginPath();
+  context.moveTo(width * 0.03, height * 0.42);
+  const pts = [
+    [0.1, 0.24],
+    [0.2, 0.18],
+    [0.34, 0.21],
+    [0.43, 0.12],
+    [0.58, 0.2],
+    [0.7, 0.15],
+    [0.86, 0.28],
+    [0.91, 0.47],
+    [0.82, 0.62],
+    [0.69, 0.68],
+    [0.58, 0.83],
+    [0.42, 0.72],
+    [0.29, 0.79],
+    [0.18, 0.67],
+    [0.06, 0.62]
+  ];
+  for (const [px, py] of pts) context.lineTo(width * px, height * py);
+  context.closePath();
+  context.fillStyle = '#314536';
+  context.fill();
+  context.clip();
+  for (let i = 0; i < 42; i++) {
+    const bx = ((i * 137) % 1000) / 1000;
+    const by = ((i * 293) % 1000) / 1000;
+    const radius = 70 + ((i * 19) % 90);
+    const grad = context.createRadialGradient(width * bx, height * by, 0, width * bx, height * by, radius);
+    grad.addColorStop(0, `${terrainBands[i % terrainBands.length]}cc`);
+    grad.addColorStop(1, 'rgba(20, 24, 18, 0)');
+    context.fillStyle = grad;
+    context.fillRect(0, 0, width, height);
+  }
+  context.globalAlpha = 0.24;
+  context.strokeStyle = '#d8bd7a';
+  context.lineWidth = 1;
+  for (let i = 0; i < 16; i++) {
+    context.beginPath();
+    const ly = height * (0.12 + i * 0.05);
+    context.moveTo(width * 0.08, ly);
+    context.bezierCurveTo(width * 0.28, ly + Math.sin(i) * 28, width * 0.54, ly - 38, width * 0.88, ly + 18);
+    context.stroke();
+  }
+  context.restore();
 
-  for (let i = 0; i < sites.length - 1; i += 1) {
-    drawRoute(sites[i], sites[i + 1], width, height);
+  for (let i = 0; i < sites.length - 1; i++) {
+    context.save();
+    context.strokeStyle = 'rgba(235, 210, 148, 0.33)';
+    context.lineWidth = 2;
+    context.setLineDash([6, 8]);
+    context.beginPath();
+    context.moveTo(sites[i].x * width, sites[i].y * height);
+    context.quadraticCurveTo(width * 0.5, height * 0.45, sites[i + 1].x * width, sites[i + 1].y * height);
+    context.stroke();
+    context.restore();
   }
 
   for (const point of sites) {
-    drawSite(point, width, height);
+    const x = point.x * width,
+      y = point.y * height;
+    const radius = point.size + Math.sin(pulse * 3 + point.x * 10) * 1.2;
+    context.save();
+    context.fillStyle = 'rgba(8, 9, 7, 0.5)';
+    context.beginPath();
+    context.arc(x, y + 2, radius * 2.5, 0, Math.PI * 2);
+    context.fill();
+    context.fillStyle = point.color;
+    context.strokeStyle = '#f0d998';
+    context.lineWidth = 2;
+    context.beginPath();
+    context.arc(x, y, radius, 0, Math.PI * 2);
+    context.fill();
+    context.stroke();
+    context.fillStyle = '#f5e8c9';
+    context.font = '12px Georgia, serif';
+    context.textAlign = 'center';
+    context.fillText(point.name, x, y + radius + 18);
+    context.restore();
   }
 
   for (const point of clientState.localSignals) {
-    drawSignal(point, width, height);
+    const x = point.x * width,
+      y = point.y * height;
+    const radius = 7 + Math.sin(pulse * 4 + point.x) * 2;
+    context.save();
+    context.strokeStyle = 'rgba(245, 218, 139, 0.55)';
+    context.fillStyle = point.color;
+    context.lineWidth = 2;
+    context.beginPath();
+    context.arc(x, y, radius, 0, Math.PI * 2);
+    context.fill();
+    context.beginPath();
+    context.arc(x, y, radius * 3.2, 0, Math.PI * 2);
+    context.stroke();
+    context.restore();
   }
 
-  window.requestAnimationFrame(drawWorld);
+  window.requestAnimationFrame(drawMap);
+}
+
+function renderHistory() {
+  const events = clientState.events;
+  const historyList = $('#history-list');
+  const historyCount = $('#history-count');
+  if (historyCount) historyCount.textContent = `${events.length} records`;
+  if (!historyList) return;
+  if (events.length === 0) {
+    historyList.replaceChildren(
+      makeListItem('No recorded history', 'Chronicles appear after players generate historical events.')
+    );
+    return;
+  }
+  historyList.replaceChildren(
+    ...events.slice(0, 6).map((e) => {
+      const label = e.tick_number ? `Tick ${e.tick_number}` : (e.scope ?? 'World');
+      return makeListItem(label, e.summary);
+    })
+  );
+}
+
+function renderWorldNews() {
+  const list = $('#world-news-list');
+  if (!list) return;
+  const events = clientState.events;
+  if (events.length === 0) {
+    list.replaceChildren(makeListItem('No world news', 'News comes from historical events.'));
+    return;
+  }
+  list.replaceChildren(...events.slice(0, 4).map((e) => makeListItem(e.summary, e.event_type ?? 'event')));
+}
+
+function renderActiveEvents() {
+  const list = $('#active-events-list');
+  if (!list) return;
+  const active = clientState.events.filter((e) => {
+    const p = e.payload ?? {};
+    return p.active === true || p.ends_at || p.endsOnTick;
+  });
+  if (active.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'event-card';
+    empty.append(
+      Object.assign(document.createElement('strong'), { textContent: 'No active events' }),
+      Object.assign(document.createElement('span'), {
+        textContent: 'Famines, wars, festivals appear when simulation creates them.'
+      })
+    );
+    list.replaceChildren(empty);
+    return;
+  }
+  list.replaceChildren(
+    ...active.slice(0, 4).map((e) => {
+      const card = document.createElement('div');
+      card.className = 'event-card';
+      card.append(
+        Object.assign(document.createElement('strong'), { textContent: e.summary }),
+        Object.assign(document.createElement('span'), { textContent: e.event_type ?? 'event' })
+      );
+      return card;
+    })
+  );
 }
 
 function makeListItem(primary, secondary) {
@@ -267,71 +405,6 @@ function makeListItem(primary, secondary) {
   return item;
 }
 
-function renderHistory() {
-  const events = clientState.events;
-  historyCount.textContent = `${events.length} records`;
-
-  if (events.length === 0) {
-    historyList.replaceChildren(
-      makeListItem('No recorded history', 'Chronicles will appear here after players generate historical events.')
-    );
-    return;
-  }
-
-  historyList.replaceChildren(
-    ...events.slice(0, 6).map((event) => {
-      const label = event.tick_number ? `Tick ${event.tick_number}` : (event.scope ?? 'World');
-      return makeListItem(label, event.summary);
-    })
-  );
-}
-
-function renderWorldNews() {
-  const events = clientState.events;
-
-  if (events.length === 0) {
-    worldNewsList.replaceChildren(makeListItem('No world news', 'News is generated from actual historical events.'));
-    return;
-  }
-
-  worldNewsList.replaceChildren(
-    ...events.slice(0, 4).map((event) => makeListItem(event.summary, event.event_type ?? 'historical event'))
-  );
-}
-
-function renderActiveEvents() {
-  const activeEvents = clientState.events.filter((event) => {
-    const payload = event.payload ?? {};
-    return payload.active === true || payload.ends_at || payload.endsOnTick;
-  });
-
-  if (activeEvents.length === 0) {
-    const empty = document.createElement('div');
-    empty.className = 'event-card';
-    empty.append(
-      Object.assign(document.createElement('strong'), { textContent: 'No active events' }),
-      Object.assign(document.createElement('span'), {
-        textContent:
-          'Famines, elections, migrations, wars, and festivals will appear only when simulation data creates them.'
-      })
-    );
-    activeEventsList.replaceChildren(empty);
-    return;
-  }
-
-  activeEventsList.replaceChildren(
-    ...activeEvents.slice(0, 4).map((event) => {
-      const card = document.createElement('div');
-      card.className = 'event-card';
-      card.append(
-        Object.assign(document.createElement('strong'), { textContent: event.summary }),
-        Object.assign(document.createElement('span'), { textContent: event.event_type ?? 'active world event' })
-      );
-      return card;
-    })
-  );
-}
-
 function renderDerivedWorldState() {
   const calendar = clientState.calendar;
   const regionTotal = clientState.regions.length;
@@ -340,11 +413,10 @@ function renderDerivedWorldState() {
   const hasCalendar = Boolean(calendar?.has_time_concept);
   const apiLabel = clientState.apiOnline ? 'API connected' : 'Static preview';
 
-  worldState.textContent = hasCalendar ? 'Civilization begins' : 'Dawn of settlement';
-  gameDay.textContent = hasCalendar ? `Day ${day}` : `${apiLabel}: no calendar`;
-  calendarStatus.textContent = hasCalendar ? `Day ${day}` : 'Not invented';
-  regionCount.textContent = String(regionTotal);
-
+  text('#world-state', hasCalendar ? 'Civilization begins' : 'Dawn of settlement');
+  text('#game-day', hasCalendar ? `Day ${day}` : `${apiLabel}: no calendar`);
+  text('#calendar-status', hasCalendar ? `Day ${day}` : 'Not invented');
+  text('#region-count', String(regionTotal));
   text('#population-stat', hasCalendar ? 'First generation active' : '0 registered');
   text('#culture-stat', historyTotal > 0 ? 'Emerging from events' : 'Unformed');
   text('#religion-stat', 'No shared rites');
@@ -369,15 +441,14 @@ function renderAll() {
 
 async function loadWorldState() {
   try {
-    const [calendarPayload, regionsPayload, historyPayload] = await Promise.all([
-      fetchJson('/world/calendar'),
-      fetchJson('/world/regions'),
-      fetchJson('/world/history')
+    const [calRes, regRes, histRes] = await Promise.all([
+      api('GET', '/world/calendar'),
+      api('GET', '/world/regions'),
+      api('GET', '/world/history')
     ]);
-
-    clientState.calendar = calendarPayload.calendar ?? null;
-    clientState.regions = regionsPayload.regions ?? [];
-    clientState.events = historyPayload.events ?? [];
+    clientState.calendar = calRes.data.calendar ?? null;
+    clientState.regions = regRes.data.regions ?? [];
+    clientState.events = histRes.data.events ?? [];
     clientState.apiOnline = true;
   } catch {
     clientState.calendar = null;
@@ -385,100 +456,74 @@ async function loadWorldState() {
     clientState.events = [];
     clientState.apiOnline = false;
   }
-
   renderAll();
 }
 
-function addLocalSignal(action) {
-  const signalColors = {
-    travel: 'rgba(245, 218, 139, 0.86)',
-    forage: 'rgba(114, 185, 92, 0.86)',
-    camp: 'rgba(194, 177, 112, 0.86)'
-  };
-
-  if (!signalColors[action]) {
+async function handleAction(actionType, extraPayload = {}) {
+  if (!sessionToken) {
+    toast('Log in first.', 'error');
     return;
   }
-
-  clientState.localSignals = [
-    ...clientState.localSignals,
-    {
-      x: 0.15 + Math.random() * 0.7,
-      y: 0.2 + Math.random() * 0.58,
-      color: signalColors[action]
-    }
-  ].slice(-14);
-}
-
-function handlePrototypeAction(action) {
-  clientState.lastAction = action;
-  addLocalSignal(action);
-  actionResult.textContent = actionCopy[action] ?? 'Action acknowledged.';
-
-  if (action === 'focus-map') {
-    canvas.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  if (!activeCharacterId && myCharacters.length > 0) {
+    activeCharacterId = myCharacters[0].id;
+    localStorage.setItem('velmora_active_character', activeCharacterId);
+  }
+  if (!activeCharacterId) {
+    toast('Create a character first.', 'error');
+    return;
+  }
+  const payload = { characterId: activeCharacterId, ...extraPayload };
+  const { ok, data } = await api('POST', '/actions', {
+    actionType,
+    characterId: activeCharacterId,
+    payload
+  });
+  if (ok) {
+    toast(`Action queued: ${actionType}`, 'success');
+  } else {
+    toast(data.error || 'Action failed', 'error');
   }
 }
 
-registerForm.addEventListener('submit', async (event) => {
-  event.preventDefault();
-  const formData = new FormData(registerForm);
+const actionMapping = {
+  travel: 'travel',
+  forage: 'gather_resource',
+  camp: 'build_structure',
+  craft: 'craft_item',
+  teach: 'teach',
+  trade: 'gather_resource',
+  govern: null,
+  chronicle: null
+};
 
-  registrationResult.textContent = 'Registering...';
-
-  try {
-    const response = await fetch('/auth/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: formData.get('email'),
-        displayName: formData.get('displayName'),
-        password: formData.get('password')
-      })
-    });
-    const payload = await response.json();
-
-    if (!response.ok) {
-      registrationResult.textContent = payload.error ?? 'Registration failed.';
-      return;
+document.querySelectorAll('[data-action]').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    const a = btn.dataset.action;
+    const mapped = actionMapping[a];
+    if (mapped) {
+      handleAction(mapped);
+    } else if (a === 'inspect-region') {
+      toast('This starting region has water, forage, wood, stone, and migration pressure.', 'info');
+    } else if (a === 'focus-map') {
+      canvas.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } else if (a === 'character' || a === 'family' || a === 'society' || a === 'learn' || a === 'culture') {
+      toast(`"${a}" view will be available in a future update.`, 'info');
+    } else {
+      toast(`"${a}" is not yet wired.`, 'info');
     }
-
-    registrationResult.textContent = payload.account.isCreator
-      ? 'Creator account created. The world still has no calendar.'
-      : payload.world.dayOneStarted
-        ? 'First player registered. Day 1 has begun.'
-        : 'Player account created.';
-
-    text('#player-heading', payload.account.displayName);
-    text(
-      '#player-summary',
-      payload.account.isCreator
-        ? 'Creator account. Waiting for the first normal player.'
-        : 'First generation character account.'
-    );
-    text('#reputation-stat', 'Unwritten');
-    text('#influence-stat', payload.account.isCreator ? 'Creator' : '1');
-    text('#learning-stat', 'Oral');
-
-    registerForm.reset();
-    await loadWorldState();
-  } catch {
-    registrationResult.textContent =
-      'Registration service unavailable. Set DATABASE_URL and run the Express server to enable accounts.';
-  }
+  });
 });
 
-document.querySelectorAll('[data-action]').forEach((button) => {
-  button.addEventListener('click', () => handlePrototypeAction(button.dataset.action));
-});
-
-document.querySelector('#map-reset-button').addEventListener('click', () => {
+$('#map-reset-button')?.addEventListener('click', () => {
   clientState.localSignals = [];
-  actionResult.textContent = 'Local map signals cleared.';
+  toast('Map signals cleared.', 'info');
 });
 
 window.addEventListener('resize', resizeCanvas);
-resizeCanvas();
-drawWorld();
+
+renderAuthState();
 loadWorldState();
+if (sessionToken) loadMyCharacters();
 window.setInterval(loadWorldState, 10000);
+resizeCanvas();
+window.requestAnimationFrame(drawMap);

@@ -1,0 +1,1 @@
+ALTER TABLE player_actions ADD COLUMN IF NOT EXISTS result JSONB NOT NULL DEFAULT '{}'::jsonb;

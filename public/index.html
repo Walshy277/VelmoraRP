@@ -247,8 +247,8 @@
       </section>
 
       <aside class="right-rail" aria-label="Account and world activity">
-        <section class="panel account-panel">
-          <p class="label">Create Account</p>
+        <section class="panel account-panel" id="account-panel">
+          <p class="label">Account</p>
           <form id="register-form">
             <label>
               Email
@@ -262,9 +262,18 @@
               Password
               <input id="password" name="password" type="password" minlength="10" required />
             </label>
-            <button type="submit">Register</button>
+            <button type="submit" id="register-submit">Register</button>
+            <button type="button" id="login-submit" class="secondary-button">Log In</button>
           </form>
-          <p id="registration-result" class="status-text">The first account becomes creator. The next begins Day 1.</p>
+          <p id="auth-result" class="status-text">The first account becomes creator. The next begins Day 1.</p>
+        </section>
+
+        <section class="panel" id="session-panel" style="display: none">
+          <p class="label">My Account</p>
+          <p><strong id="session-display-name"></strong></p>
+          <p id="session-characters" class="status-text"></p>
+          <button id="show-create-character" class="secondary-button" type="button">Create Character</button>
+          <button id="logout-button" class="secondary-button" type="button">Log Out</button>
         </section>
 
         <section class="panel">
@@ -278,6 +287,20 @@
         </section>
       </aside>
     </main>
+
+    <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+    <dialog id="character-dialog" class="modal">
+      <form id="character-form" method="dialog">
+        <p class="label">Create Character</p>
+        <label>
+          Name
+          <input id="character-name" name="name" type="text" minlength="2" maxlength="40" required />
+        </label>
+        <button type="submit">Claim Character</button>
+        <button type="button" id="character-cancel" class="secondary-button">Cancel</button>
+      </form>
+    </dialog>
 
     <footer class="bottom-bar">
       <span id="footer-civilizations">Civilizations: 0</span>

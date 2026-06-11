@@ -7,6 +7,7 @@ import { closeDatabase } from './db/pool.js';
 import { logger } from './logger.js';
 import { authRouter } from './routes/auth.js';
 import { devRouter } from './routes/dev.js';
+import { gameRouter } from './routes/game.js';
 import { healthRouter } from './routes/health.js';
 import { worldRouter } from './routes/world.js';
 import { startTickLoop } from './simulation/tickEngine.js';
@@ -21,6 +22,7 @@ app.use(express.static(publicPath));
 app.use(authRouter);
 app.use(healthRouter);
 app.use(worldRouter);
+app.use(gameRouter);
 
 if (config.NODE_ENV !== 'production') {
   app.use(devRouter);
