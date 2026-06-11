@@ -5,25 +5,81 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>VelmoraRP Dev Dashboard</title>
     <link rel="stylesheet" href="/styles.css" />
+    <style>
+      .dev-dashboard { display: grid; gap: 14px; padding: 14px; max-width: 1400px; margin: 0 auto; }
+      .dev-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+      .stat-card { border: 1px solid var(--line); background: var(--panel); padding: 14px; }
+      .stat-card .value { font-size: 28px; color: var(--gold-soft); font-weight: 700; }
+      .stat-card .stat-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+      .system-bar { display: flex; justify-content: space-between; padding: 6px 0; border-top: 1px solid var(--line-soft); font-size: 13px; }
+      .system-bar:first-child { border-top: 0; }
+      .system-name { color: var(--gold-soft); }
+      .action-badge { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 11px; }
+      .badge-queued { background: #3a4a3a; color: #8f8; }
+      .badge-applied { background: #3a4a3a; color: #8f8; }
+      .badge-processing { background: #4a4a3a; color: #ff8; }
+      .badge-rejected { background: #4a3a3a; color: #f88; }
+      .badge-failed { background: #4a3a3a; color: #f88; }
+      .dev-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+      .tick-row { display: flex; justify-content: space-between; padding: 6px 0; border-top: 1px solid var(--line-soft); font-size: 13px; }
+      .tick-row.ok { color: var(--good); }
+      .tick-row.fail { color: #c66; }
+      .action-row { display: flex; gap: 8px; align-items: center; padding: 4px 0; font-size: 12px; border-top: 1px solid var(--line-soft); }
+      .replay-controls { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
+      .replay-controls input, .replay-controls button { min-height: 32px; padding: 0 10px; }
+      #replay-output { max-height: 400px; overflow-y: auto; font-size: 12px; }
+      @media (max-width: 720px) { .dev-grid { grid-template-columns: 1fr; } }
+    </style>
   </head>
   <body>
-    <main class="side-panel dev-dashboard">
-      <section class="panel-section">
-        <p class="label">Dev Dashboard</p>
-        <h1>Simulation State</h1>
-        <p id="dev-status" class="status-text">Loading...</p>
-      </section>
-      <section class="panel-section">
-        <p class="label">Ticks</p>
-        <ol id="dev-ticks" class="history-list"></ol>
-      </section>
-      <section class="panel-section">
-        <p class="label">Action Queue</p>
-        <ol id="dev-actions" class="history-list"></ol>
-      </section>
-      <section class="panel-section">
-        <p class="label">Recent Events</p>
-        <ol id="dev-history" class="history-list"></ol>
+    <main class="dev-dashboard">
+      <div class="dev-header">
+        <div>
+          <p class="label">Dev Dashboard</p>
+          <h1>Simulation State</h1>
+        </div>
+        <div>
+          <button id="refresh-btn" class="secondary-button" type="button">Refresh</button>
+          <button id="cleanup-sessions-btn" class="secondary-button" type="button">Cleanup Sessions</button>
+          <a href="/" class="secondary-button" style="display:inline-flex;align-items:center;text-decoration:none;padding:0 12px;min-height:36px">Back to Game</a>
+        </div>
+      </div>
+
+      <p id="dev-status" class="status-text">Loading...</p>
+
+      <div class="dev-grid" id="summary-cards"></div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <section class="panel">
+          <p class="label">System Performance</p>
+          <div id="system-stats"></div>
+        </section>
+        <section class="panel">
+          <p class="label">Action Queue</p>
+          <div id="action-stats"></div>
+        </section>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <section class="panel">
+          <p class="label">Recent Ticks</p>
+          <ol id="dev-ticks" class="history-list"></ol>
+        </section>
+        <section class="panel">
+          <p class="label">Recent Events</p>
+          <ol id="dev-history" class="history-list"></ol>
+        </section>
+      </div>
+
+      <section class="panel">
+        <p class="label">Event Replay</p>
+        <div class="replay-controls">
+          <input type="number" id="replay-from" placeholder="From tick" min="1" />
+          <input type="number" id="replay-to" placeholder="To tick" min="1" />
+          <input type="number" id="replay-limit" placeholder="Limit" value="100" min="1" max="500" />
+          <button id="replay-btn" class="secondary-button" type="button">Load Replay</button>
+        </div>
+        <pre id="replay-output" class="status-text">Click "Load Replay" to view events.</pre>
       </section>
     </main>
     <script type="module" src="/dev.js"></script>

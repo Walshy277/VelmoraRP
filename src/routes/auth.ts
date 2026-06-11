@@ -1,8 +1,9 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
+import { pool } from '../db/pool.js';
 import { DuplicateEmailError, registerAccount } from '../auth/accounts.js';
-import { InvalidCredentialsError, loginAccount } from '../auth/sessions.js';
+import { InvalidCredentialsError, loginAccount, createSession } from '../auth/sessions.js';
 
 export const authRouter = Router();
 
@@ -47,17 +48,25 @@ authRouter.post('/auth/register', registerLimiter, async (request, response, nex
   try {
     const account = await registerAccount(parsed.data);
 
-    response.status(201).json({
-      account: {
-        id: account.id,
-        email: account.email,
-        displayName: account.displayName,
-        isCreator: account.isCreator
-      },
-      world: {
-        dayOneStarted: account.dayOneStarted
-      }
-    });
+    const client = await pool.connect();
+    try {
+      const session = await createSession(client, account.id);
+
+      response.status(201).json({
+        token: session.token,
+        account: {
+          id: account.id,
+          email: account.email,
+          displayName: account.displayName,
+          isCreator: account.isCreator
+        },
+        world: {
+          dayOneStarted: account.dayOneStarted
+        }
+      });
+    } finally {
+      client.release();
+    }
   } catch (error) {
     if (error instanceof DuplicateEmailError) {
       response.status(409).json({ error: 'email_already_registered' });
@@ -81,9 +90,10 @@ authRouter.post('/auth/login', loginLimiter, async (request, response, next) => 
 
   try {
     const session = await loginAccount(parsed.data.email, parsed.data.password);
-    const accountResult = await (
-      await import('../db/pool.js')
-    ).pool.query('SELECT id, email, display_name, is_creator FROM accounts WHERE id = $1', [session.accountId]);
+    const accountResult = await pool.query(
+      'SELECT id, email, display_name, is_creator FROM accounts WHERE id = $1',
+      [session.accountId]
+    );
 
     const account = accountResult.rows[0];
 

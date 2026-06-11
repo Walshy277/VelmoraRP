@@ -67,7 +67,7 @@
         </section>
       </aside>
 
-      <section class="content" id="home">
+      <section class="content view-section" id="view-home">
         <section class="parchment hero-panel" aria-label="Player overview">
           <div class="banner" aria-hidden="true"><span></span></div>
           <div>
@@ -244,6 +244,110 @@
             </dl>
           </article>
         </section>
+      </section>
+
+      <!-- Character View -->
+      <section class="content view-section" id="view-character" style="display:none">
+        <section class="panel">
+          <p class="label">My Character</p>
+          <div id="character-view-content">
+            <p class="status-text">Loading character data...</p>
+          </div>
+        </section>
+        <section class="panel">
+          <p class="label">Inventory</p>
+          <div id="inventory-view-content">
+            <p class="status-text">No inventory data loaded.</p>
+          </div>
+        </section>
+        <section class="panel">
+          <p class="label">Knowledge</p>
+          <div id="knowledge-view-content">
+            <p class="status-text">No knowledge data loaded.</p>
+          </div>
+        </section>
+        <button class="secondary-button" onclick="window.location.hash=''">Back to Home</button>
+      </section>
+
+      <!-- Society View -->
+      <section class="content view-section" id="view-society" style="display:none">
+        <section class="panel">
+          <p class="label">Society</p>
+          <div id="society-view-content">
+            <p class="status-text">Loading society data...</p>
+          </div>
+        </section>
+        <section class="panel" id="society-groups-section">
+          <p class="label">Groups</p>
+          <div id="groups-view-content">
+            <p class="status-text">Loading groups...</p>
+          </div>
+        </section>
+        <section class="panel" id="society-settlements-section">
+          <p class="label">Settlements</p>
+          <div id="settlements-view-content">
+            <p class="status-text">Loading settlements...</p>
+          </div>
+        </section>
+        <button class="secondary-button" onclick="window.location.hash=''">Back to Home</button>
+      </section>
+
+      <!-- Knowledge Tree View -->
+      <section class="content view-section" id="view-learn" style="display:none">
+        <section class="panel">
+          <p class="label">Knowledge Tree</p>
+          <div id="knowledge-tree-content">
+            <p class="status-text">Loading knowledge entries...</p>
+          </div>
+        </section>
+        <button class="secondary-button" onclick="window.location.hash=''">Back to Home</button>
+      </section>
+
+      <!-- Culture View -->
+      <section class="content view-section" id="view-culture" style="display:none">
+        <section class="panel">
+          <p class="label">Culture Encyclopedia</p>
+          <div id="culture-view-content">
+            <p class="status-text">Cultural records will appear as civilizations develop.</p>
+          </div>
+        </section>
+        <button class="secondary-button" onclick="window.location.hash=''">Back to Home</button>
+      </section>
+
+      <!-- Family View (placeholder) -->
+      <section class="content view-section" id="view-family" style="display:none">
+        <section class="panel">
+          <p class="label">My Family</p>
+          <p class="status-text">Family tree and lineage tracking coming soon.</p>
+        </section>
+        <button class="secondary-button" onclick="window.location.hash=''">Back to Home</button>
+      </section>
+
+      <!-- Trade View (placeholder) -->
+      <section class="content view-section" id="view-trade" style="display:none">
+        <section class="panel">
+          <p class="label">Trade</p>
+          <p class="status-text">Trade routes and marketplace coming soon.</p>
+        </section>
+        <button class="secondary-button" onclick="window.location.hash=''">Back to Home</button>
+      </section>
+
+      <!-- Govern View (placeholder) -->
+      <section class="content view-section" id="view-govern" style="display:none">
+        <section class="panel">
+          <p class="label">Govern</p>
+          <p class="status-text">Governance mechanics coming soon.</p>
+        </section>
+        <button class="secondary-button" onclick="window.location.hash=''">Back to Home</button>
+      </section>
+
+      <!-- Chronicle View (placeholder) -->
+      <section class="content view-section" id="view-chronicle" style="display:none">
+        <section class="panel">
+          <p class="label">Write Chronicle</p>
+          <p class="status-text">Chronicle writing system coming soon.</p>
+        </section>
+        <button class="secondary-button" onclick="window.location.hash=''">Back to Home</button>
       </section>
 
       <aside class="right-rail" aria-label="Account and world activity">
