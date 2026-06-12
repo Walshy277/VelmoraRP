@@ -44,9 +44,10 @@ async function ensureSchemaMigrationsTable(client: pg.PoolClient): Promise<void>
 }
 
 export async function runMigrations(databaseUrl?: string): Promise<void> {
-  const url = databaseUrl ?? process.env.DATABASE_URL;
-  if (!url) throw new Error('DATABASE_URL is required');
+  const raw = databaseUrl ?? process.env.DATABASE_URL;
+  if (!raw) throw new Error('DATABASE_URL is required');
 
+  const url = raw.replace(/[?&]sslmode=[^&]+/g, '').replace(/[?&]$/, '');
   const isRemote = !url.includes('localhost') && !url.includes('127.0.0.1');
   const pool = new pg.Pool({
     connectionString: url,
