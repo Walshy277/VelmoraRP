@@ -47,7 +47,11 @@ export async function runMigrations(databaseUrl?: string): Promise<void> {
   const url = databaseUrl ?? process.env.DATABASE_URL;
   if (!url) throw new Error('DATABASE_URL is required');
 
-  const pool = new pg.Pool({ connectionString: url });
+  const isRemote = !url.includes('localhost') && !url.includes('127.0.0.1');
+  const pool = new pg.Pool({
+    connectionString: url,
+    ...(isRemote && { ssl: { rejectUnauthorized: false } })
+  });
   const client = await pool.connect();
 
   try {
