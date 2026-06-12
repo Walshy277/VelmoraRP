@@ -14,6 +14,7 @@ import { startTickLoop } from './simulation/tickEngine.js';
 import { runMigrations } from './db/migrate.js';
 
 const app = express();
+app.set('trust proxy', 1);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicPath = path.resolve(__dirname, '..', 'public');
 
