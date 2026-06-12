@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { pool } from '../db/pool.js';
 import { DuplicateEmailError, registerAccount } from '../auth/accounts.js';
 import { InvalidCredentialsError, loginAccount, createSession } from '../auth/sessions.js';
+import { requireAuth } from '../auth/middleware.js';
 
 export const authRouter = Router();
 
@@ -112,6 +113,23 @@ authRouter.post('/auth/login', loginLimiter, async (request, response, next) => 
       return;
     }
 
+    next(error);
+  }
+});
+
+authRouter.post('/auth/logout', requireAuth, async (request, response, next) => {
+  const authHeader = request.headers.authorization;
+  const token = authHeader?.slice(7);
+
+  if (!token) {
+    response.status(401).json({ error: 'authentication_required' });
+    return;
+  }
+
+  try {
+    await pool.query('DELETE FROM sessions WHERE token = $1', [token]);
+    response.status(204).end();
+  } catch (error) {
     next(error);
   }
 });

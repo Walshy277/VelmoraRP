@@ -1,30 +1,131 @@
 import { getSessionToken, getMyCharacters, getActiveCharacterId, submitAction } from './auth.js';
+import { api } from './api.js';
 import { toast } from './toast.js';
 
-const actionMapping = {
-  travel: 'travel',
-  forage: 'gather_resource',
-  camp: 'build_structure',
-  craft: 'craft_item',
-  teach: 'teach',
-  govern: null,
-  chronicle: null
-};
+function requireAuth() {
+  if (!getSessionToken()) { toast('Log in first.', 'error'); return false; }
+  if (!getActiveCharacterId() && getMyCharacters().length === 0) { toast('Create a character first.', 'error'); return false; }
+  return true;
+}
+
+function navigateTo(view) {
+  window.location.hash = view;
+}
+
+function wireDialog(dialogId, submitId, cancelId, onSubmit) {
+  const dialog = document.querySelector(dialogId);
+  const submit = document.querySelector(submitId);
+  const cancel = document.querySelector(cancelId);
+  if (!dialog || !submit || !cancel) return;
+  submit.addEventListener('click', async () => {
+    const result = await onSubmit(dialog);
+    if (result) dialog.close();
+  });
+  cancel.addEventListener('click', () => dialog.close());
+}
 
 export function wireActionButtons() {
+  wireDialog('#group-dialog', '#group-submit', '#group-cancel', async (dialog) => {
+    if (!requireAuth()) return false;
+    const name = document.querySelector('#group-name').value.trim();
+    const description = document.querySelector('#group-description').value.trim();
+    if (!name) { toast('Enter a group name.', 'error'); return false; }
+    const { ok, data } = await api('POST', '/groups', { name, description });
+    if (ok) { toast(`Group "${name}" formed!`, 'success'); dialog.close(); return true; }
+    toast(data?.error || 'Failed to form group', 'error');
+    return false;
+  });
+
+  wireDialog('#settlement-dialog', '#settlement-submit', '#settlement-cancel', async () => {
+    if (!requireAuth()) return false;
+    const name = document.querySelector('#settlement-name-input').value.trim();
+    if (!name) { toast('Enter a settlement name.', 'error'); return false; }
+
+    const charsRes = await api('GET', '/world/characters');
+    if (!charsRes.ok) { toast('Could not load character data.', 'error'); return false; }
+    const myChars = (charsRes.data.characters || []).filter(c => {
+      const activeId = getActiveCharacterId();
+      return activeId ? c.id === activeId : false;
+    });
+    const char = myChars[0] || (charsRes.data.characters || [])[0];
+    if (!char) { toast('No character found.', 'error'); return false; }
+
+    const regionId = char.region_id;
+    const { ok, data } = await api('POST', '/settlements', {
+      name,
+      regionId,
+      positionX: char.position_x || 50,
+      positionY: char.position_y || 50
+    });
+    if (ok) { toast(`Settlement "${name}" founded!`, 'success'); return true; }
+    toast(data?.error || 'Failed to found settlement', 'error');
+    return false;
+  });
+
+  wireDialog('#structure-dialog', '#structure-submit', '#structure-cancel', async () => {
+    if (!requireAuth()) return false;
+    const kind = document.querySelector('#structure-kind').value;
+    const charsRes = await api('GET', '/world/characters');
+    if (!charsRes.ok) { toast('Could not load character data.', 'error'); return false; }
+    const activeId = getActiveCharacterId();
+    const myChars = (charsRes.data.characters || []).filter(c => activeId ? c.id === activeId : false);
+    const char = myChars[0] || (charsRes.data.characters || [])[0];
+    if (!char) { toast('No character found.', 'error'); return false; }
+    const { ok, data } = await api('POST', '/structures', {
+      kind,
+      regionId: char.region_id,
+      positionX: char.position_x || 50,
+      positionY: char.position_y || 50
+    });
+    if (ok) { toast(`Placed a ${kind}!`, 'success'); return true; }
+    toast(data?.error || 'Failed to place structure', 'error');
+    return false;
+  });
+
+  wireDialog('#craft-dialog', '#craft-submit', '#craft-cancel', async () => {
+    if (!requireAuth()) return false;
+    const recipe = document.querySelector('#craft-recipe').value;
+    if (!recipe) { toast('Select a recipe.', 'error'); return false; }
+    const result = await submitAction('craft_item', { recipe, characterId: getActiveCharacterId() });
+    if (result.ok) { toast(`Crafting ${recipe} queued!`, 'success'); return true; }
+    toast(result.data?.error || 'Crafting failed', 'error');
+    return false;
+  });
+
+  wireDialog('#teach-dialog', '#teach-submit', '#teach-cancel', async () => {
+    if (!requireAuth()) return false;
+    const knowledge = document.querySelector('#teach-knowledge').value.trim();
+    const targetCharacterId = document.querySelector('#teach-target').value.trim();
+    if (!knowledge || !targetCharacterId) { toast('Enter knowledge name and target character ID.', 'error'); return false; }
+    const result = await submitAction('teach', { knowledge, targetCharacterId, characterId: getActiveCharacterId() });
+    if (result.ok) { toast(`Teaching ${knowledge} queued!`, 'success'); return true; }
+    toast(result.data?.error || 'Teaching failed', 'error');
+    return false;
+  });
+
   document.querySelectorAll('[data-action]').forEach(btn => {
     btn.addEventListener('click', async () => {
       const a = btn.dataset.action;
-      const mapped = actionMapping[a];
-      if (mapped) {
-        if (!getSessionToken()) { toast('Log in first.', 'error'); return; }
-        if (!getActiveCharacterId() && getMyCharacters().length === 0) { toast('Create a character first.', 'error'); return; }
-        const result = await submitAction(mapped);
-        if (result.ok) {
-          toast(`Action queued: ${mapped}`, 'success');
-        } else {
-          toast(result.data?.error || result.error || 'Action failed', 'error');
-        }
+
+      if (a === 'camp') {
+        if (!requireAuth()) return;
+        document.querySelector('#structure-kind').value = 'hut';
+        document.querySelector('#structure-dialog').showModal();
+      } else if (a === 'craft') {
+        if (!requireAuth()) return;
+        document.querySelector('#craft-dialog').showModal();
+      } else if (a === 'teach') {
+        if (!requireAuth()) return;
+        document.querySelector('#teach-dialog').showModal();
+      } else if (a === 'form-group') {
+        if (!requireAuth()) return;
+        document.querySelector('#group-dialog').showModal();
+      } else if (a === 'found-settlement') {
+        if (!requireAuth()) return;
+        document.querySelector('#settlement-dialog').showModal();
+      } else if (a === 'place-structure') {
+        if (!requireAuth()) return;
+        document.querySelector('#structure-dialog').showModal();
       } else if (a === 'inspect-region') {
         toast('This starting region has water, forage, wood, stone, and migration pressure.', 'info');
       } else if (a === 'focus-map') {
@@ -33,17 +134,25 @@ export function wireActionButtons() {
       } else if (['character', 'family', 'society', 'learn', 'culture', 'trade', 'govern', 'chronicle'].includes(a)) {
         navigateTo(a);
       } else {
-        toast(`"${a}" is not yet wired.`, 'info');
+        const actionMap = {
+          travel: 'travel',
+          forage: 'gather_resource',
+          govern: null,
+          chronicle: null
+        };
+        const mapped = actionMap[a];
+        if (mapped) {
+          if (!requireAuth()) return;
+          const result = await submitAction(mapped);
+          if (result.ok) {
+            toast(`Action queued: ${mapped}`, 'success');
+          } else {
+            toast(result.data?.error || result.error || 'Action failed', 'error');
+          }
+        } else {
+          toast(`"${a}" is not yet wired.`, 'info');
+        }
       }
     });
   });
-}
-
-// Simple hash-based SPA navigation
-function navigateTo(view) {
-  window.location.hash = view;
-  const sections = document.querySelectorAll('.view-section');
-  sections.forEach(s => s.style.display = 'none');
-  const target = document.querySelector(`#view-${view}`);
-  if (target) target.style.display = '';
 }

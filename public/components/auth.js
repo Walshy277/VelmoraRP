@@ -87,7 +87,8 @@ export async function handleLogin(email, password) {
   return { ok: true, data };
 }
 
-export function handleLogout() {
+export async function handleLogout() {
+  await api('POST', '/auth/logout').catch(() => {});
   clearSession();
 }
 

@@ -49,8 +49,8 @@ document.querySelector('#login-submit')?.addEventListener('click', async () => {
   await loadWorldState();
 });
 
-document.querySelector('#logout-button')?.addEventListener('click', () => {
-  handleLogout();
+document.querySelector('#logout-button')?.addEventListener('click', async () => {
+  await handleLogout();
   toast('Logged out.', 'info');
   loadWorldState();
 });

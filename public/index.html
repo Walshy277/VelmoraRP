@@ -152,22 +152,27 @@
                 <span>Teach</span>
                 <small>Transmit knowledge</small>
               </button>
-              <button class="action-button" data-action="trade" type="button">
-                <span>Trade</span>
-                <small>Barter with nearby groups</small>
-              </button>
-              <button class="action-button" data-action="govern" type="button">
-                <span>Govern</span>
-                <small>Shape laws and legitimacy</small>
-              </button>
               <button class="action-button" data-action="craft" type="button">
                 <span>Craft</span>
                 <small>Create tools and goods</small>
               </button>
-              <button class="action-button" data-action="chronicle" type="button">
-                <span>Write Chronicle</span>
-                <small>Record lasting history</small>
+              <button class="action-button" data-action="trade" type="button">
+                <span>Trade</span>
+                <small>Barter with nearby groups</small>
               </button>
+              <button class="action-button" data-action="form-group" type="button">
+                <span>Form Group</span>
+                <small>Unite with others</small>
+              </button>
+              <button class="action-button" data-action="found-settlement" type="button">
+                <span>Found Settlement</span>
+                <small>Establish a home</small>
+              </button>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+              <button class="secondary-button" data-action="place-structure" type="button">Place Structure</button>
+              <button class="secondary-button" data-action="govern" type="button">Govern</button>
+              <button class="secondary-button" data-action="chronicle" type="button">Write Chronicle</button>
             </div>
             <p id="action-result" class="status-text">
               Actions update the local prototype state until queued world actions are wired to the API.
@@ -403,6 +408,90 @@
         </label>
         <button type="submit">Claim Character</button>
         <button type="button" id="character-cancel" class="secondary-button">Cancel</button>
+      </form>
+    </dialog>
+
+    <dialog id="group-dialog" class="modal">
+      <form id="group-form" method="dialog">
+        <p class="label">Form a Group</p>
+        <label>
+          Group Name
+          <input id="group-name" name="name" type="text" minlength="2" maxlength="60" required />
+        </label>
+        <label>
+          Description
+          <input id="group-description" name="description" type="text" maxlength="200" />
+        </label>
+        <button type="submit" id="group-submit">Form Group</button>
+        <button type="button" id="group-cancel" class="secondary-button">Cancel</button>
+      </form>
+    </dialog>
+
+    <dialog id="settlement-dialog" class="modal">
+      <form id="settlement-form" method="dialog">
+        <p class="label">Found a Settlement</p>
+        <label>
+          Settlement Name
+          <input id="settlement-name-input" name="name" type="text" minlength="2" maxlength="60" required />
+        </label>
+        <p class="status-text">A settlement claim will be staked in your current region.</p>
+        <button type="submit" id="settlement-submit">Found Settlement</button>
+        <button type="button" id="settlement-cancel" class="secondary-button">Cancel</button>
+      </form>
+    </dialog>
+
+    <dialog id="structure-dialog" class="modal">
+      <form id="structure-form" method="dialog">
+        <p class="label">Place a Structure</p>
+        <label>
+          Kind
+          <select id="structure-kind" required>
+            <option value="campfire">Campfire</option>
+            <option value="hut">Hut</option>
+            <option value="storehouse">Storehouse</option>
+            <option value="workshop">Workshop</option>
+            <option value="wall">Wall</option>
+            <option value="farm">Farm</option>
+            <option value="shrine">Shrine</option>
+            <option value="archive">Archive</option>
+          </select>
+        </label>
+        <p class="status-text">The structure will be placed in your current region.</p>
+        <button type="submit" id="structure-submit">Place Structure</button>
+        <button type="button" id="structure-cancel" class="secondary-button">Cancel</button>
+      </form>
+    </dialog>
+
+    <dialog id="craft-dialog" class="modal">
+      <form id="craft-form" method="dialog">
+        <p class="label">Craft an Item</p>
+        <label>
+          Recipe
+          <select id="craft-recipe" required>
+            <option value="stone_axe">Stone Axe (3 stone, 2 wood)</option>
+            <option value="stone_knife">Stone Knife (2 stone, 1 wood)</option>
+            <option value="woven_basket">Woven Basket (4 fiber)</option>
+            <option value="fishing_spear">Fishing Spear (3 wood, 1 stone)</option>
+          </select>
+        </label>
+        <button type="submit" id="craft-submit">Craft</button>
+        <button type="button" id="craft-cancel" class="secondary-button">Cancel</button>
+      </form>
+    </dialog>
+
+    <dialog id="teach-dialog" class="modal">
+      <form id="teach-form" method="dialog">
+        <p class="label">Teach Knowledge</p>
+        <label>
+          Knowledge
+          <input id="teach-knowledge" name="knowledge" type="text" placeholder="e.g. Basic Foraging" required />
+        </label>
+        <label>
+          Target Character ID
+          <input id="teach-target" name="targetCharacterId" type="text" placeholder="Character UUID" required />
+        </label>
+        <button type="submit" id="teach-submit">Teach</button>
+        <button type="button" id="teach-cancel" class="secondary-button">Cancel</button>
       </form>
     </dialog>
 

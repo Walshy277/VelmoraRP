@@ -226,7 +226,7 @@ async function processBuildStructure(
   const newProgress = Math.min(100, Number(structure.construction_progress) + laborAmount);
 
   await client.query(
-    `UPDATE structures SET construction_progress = $1, completed_at = CASE WHEN $1 >= 100 AND completed_at IS NULL THEN now() ELSE completed_at END WHERE id = $2`,
+      `UPDATE structures SET construction_progress = $1, completed_at = CASE WHEN $1::numeric >= 100 AND completed_at IS NULL THEN now() ELSE completed_at END WHERE id = $2`,
     [newProgress, structureId]
   );
 

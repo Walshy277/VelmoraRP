@@ -21,7 +21,7 @@ export const knowledgeSystem: SimulationSystem = {
               0.050
             )
           )
-          ELSE GREATEST(1, institutional_strength - 0.250)
+          ELSE GREATEST(1, institutional_strength - 0.010)
         END
         WHERE institutional_strength > 1
           OR preserved_by_structure_id IS NOT NULL

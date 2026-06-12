@@ -69,7 +69,7 @@ gameRouter.post('/characters', async (request: AuthenticatedRequest, response, n
       request.accountId
     ]);
 
-    if (existingCount.rows[0].count >= 3) {
+    if (existingCount.rows[0].count > 3) {
       response.status(400).json({ error: 'max_characters_reached', maxCharacters: 3 });
       return;
     }
@@ -333,6 +333,15 @@ gameRouter.post('/settlements', async (request: AuthenticatedRequest, response, 
        VALUES ($1, '{}'::jsonb)`,
       [settlement.id]
     );
+
+    if (parsed.data.groupId) {
+      await client.query(
+        `INSERT INTO territory_claims (region_id, group_id, control_type, strength)
+         VALUES ($1, $2, 'settlement', 10)
+         ON CONFLICT (region_id, group_id, control_type) DO NOTHING`,
+        [parsed.data.regionId, parsed.data.groupId]
+      );
+    }
 
     await recordHistoricalEvent(
       {
