@@ -60,17 +60,20 @@ document.querySelector('#show-create-character')?.addEventListener('click', () =
   charDialog.showModal();
 });
 document.querySelector('#character-cancel')?.addEventListener('click', () => charDialog.close());
-document.querySelector('#character-form')?.addEventListener('submit', async (e) => {
-  e.preventDefault();
+document.querySelector('#enter-world-button')?.addEventListener('click', async () => {
   const name = document.querySelector('#character-name').value.trim();
   const focus = document.querySelector('#character-focus')?.value || 'survivor';
-  if (!name) return;
-  const result = await createCharacter(name, focus);
-  if (result.ok) {
-    toast(`Character ${result.data.character.name} created with ${focus} focus!`, 'success');
-    charDialog.close();
-  } else {
-    toast(result.data?.error || 'Failed to create character', 'error');
+  if (!name) { toast('Enter a name for your character.', 'error'); return; }
+  try {
+    const result = await createCharacter(name, focus);
+    if (result.ok) {
+      toast(`Character ${result.data.character.name} created with ${focus} focus!`, 'success');
+      charDialog.close();
+    } else {
+      toast(result.data?.error || 'Failed to create character', 'error');
+    }
+  } catch (err) {
+    toast('Could not reach the world. Is the server running?', 'error');
   }
 });
 
