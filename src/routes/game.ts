@@ -29,16 +29,21 @@ gameRouter.post('/actions', async (request: AuthenticatedRequest, response, next
   try {
     const client = await pool.connect();
     try {
+      const accountResult = await client.query(
+        'SELECT is_creator FROM accounts WHERE id = $1', [request.accountId]
+      );
+      const isCreator = accountResult.rows[0]?.is_creator ?? false;
+
       const id = await enqueueAction(client, {
         accountId: request.accountId,
         characterId: parsed.data.characterId,
         regionId: parsed.data.regionId,
         actionType: parsed.data.actionType,
-        availableTick: parsed.data.availableTick,
+        availableTick: isCreator ? 0 : parsed.data.availableTick,
         payload: parsed.data.payload
       });
 
-      response.status(201).json({ id, status: 'queued' });
+      response.status(201).json({ id, status: isCreator ? 'queued_creator' : 'queued' });
     } finally {
       client.release();
     }

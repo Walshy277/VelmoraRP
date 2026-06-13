@@ -3,11 +3,11 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>VelmoraRP Dev Dashboard</title>
+    <title>VelmoraRP — Creator Control Panel</title>
     <link rel="stylesheet" href="/styles.css" />
     <style>
-      .dev-dashboard { display: grid; gap: 14px; padding: 14px; max-width: 1400px; margin: 0 auto; }
-      .dev-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+      .cp-dashboard { display: grid; gap: 14px; padding: 14px; max-width: 1400px; margin: 0 auto; }
+      .cp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
       .stat-card { border: 1px solid var(--line); background: var(--panel); padding: 14px; }
       .stat-card .value { font-size: 28px; color: var(--gold-soft); font-weight: 700; }
       .stat-card .stat-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
@@ -20,34 +20,106 @@
       .badge-processing { background: #4a4a3a; color: #ff8; }
       .badge-rejected { background: #4a3a3a; color: #f88; }
       .badge-failed { background: #4a3a3a; color: #f88; }
-      .dev-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+      .cp-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+      .cp-header h1 { margin: 0; color: var(--gold-soft); font-size: 24px; }
+      .creator-badge { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--gold); padding: 4px 12px; border-radius: 4px; color: var(--gold); font-size: 13px; text-transform: uppercase; letter-spacing: 1px; background: rgba(200,157,70,0.08); }
       .tick-row { display: flex; justify-content: space-between; padding: 6px 0; border-top: 1px solid var(--line-soft); font-size: 13px; }
       .tick-row.ok { color: var(--good); }
       .tick-row.fail { color: #c66; }
       .action-row { display: flex; gap: 8px; align-items: center; padding: 4px 0; font-size: 12px; border-top: 1px solid var(--line-soft); }
-      .replay-controls { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
-      .replay-controls input, .replay-controls button { min-height: 32px; padding: 0 10px; }
-      #replay-output { max-height: 400px; overflow-y: auto; font-size: 12px; }
-      @media (max-width: 720px) { .dev-grid { grid-template-columns: 1fr; } }
+      .cp-section { display: grid; gap: 10px; }
+      .cp-section label { font-size: 13px; color: var(--gold-soft); }
+      .cp-section input, .cp-section select, .cp-section textarea { width: 100%; min-height: 34px; background: #0f0e0b; border: 1px solid var(--line-soft); color: #f1dfb4; border-radius: 3px; padding: 4px 8px; font-size: 13px; }
+      .cp-section textarea { min-height: 60px; resize: vertical; }
+      .char-selector { display: grid; grid-template-columns: 1fr auto; gap: 6px; align-items: center; }
+      .action-result { font-size: 12px; color: var(--muted); margin-top: 4px; }
+      .cp-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+      @media (max-width: 720px) { .cp-grid, .cp-two-col { grid-template-columns: 1fr; } }
     </style>
   </head>
   <body>
-    <main class="dev-dashboard">
-      <div class="dev-header">
-        <div>
-          <p class="label">Dev Dashboard</p>
-          <h1>Simulation State</h1>
+    <main class="cp-dashboard">
+      <div class="cp-header">
+        <div style="display:flex;align-items:center;gap:12px">
+          <span class="creator-badge">&#9733; Creator</span>
+          <h1>Control Panel</h1>
         </div>
-        <div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <span id="cp-identity" style="font-size:13px;color:var(--muted)"></span>
           <button id="refresh-btn" class="secondary-button" type="button">Refresh</button>
-          <button id="cleanup-sessions-btn" class="secondary-button" type="button">Cleanup Sessions</button>
           <a href="/" class="secondary-button" style="display:inline-flex;align-items:center;text-decoration:none;padding:0 12px;min-height:36px">Back to Game</a>
         </div>
       </div>
 
-      <p id="dev-status" class="status-text">Loading...</p>
+      <p id="cp-status" class="status-text">Connecting...</p>
 
-      <div class="dev-grid" id="summary-cards"></div>
+      <div class="cp-grid" id="summary-cards"></div>
+
+      <div class="cp-two-col">
+        <section class="panel cp-section">
+          <p class="label">Spawn Items</p>
+          <label>Character</label>
+          <select id="spawn-char"></select>
+          <label>Items (JSON, e.g. {"food":50,"stone":20})</label>
+          <textarea id="spawn-items-json">{"food":100,"wood":50,"stone":50,"fiber":30,"clay":20}</textarea>
+          <button id="spawn-btn" class="action-button" type="button">Give Items</button>
+          <p id="spawn-result" class="action-result"></p>
+        </section>
+
+        <section class="panel cp-section">
+          <p class="label">Modify Character</p>
+          <label>Character</label>
+          <select id="modify-char"></select>
+          <label>Health (0-100)</label>
+          <input type="number" id="modify-health" min="0" max="100" placeholder="100" />
+          <label>Status</label>
+          <select id="modify-status">
+            <option value="">— no change —</option>
+            <option value="active">Active</option>
+            <option value="incapacitated">Incapacitated</option>
+            <option value="imprisoned">Imprisoned</option>
+            <option value="exiled">Exiled</option>
+            <option value="retired">Retired</option>
+            <option value="missing">Missing</option>
+          </select>
+          <button id="modify-btn" class="action-button" type="button">Apply Changes</button>
+          <p id="modify-result" class="action-result"></p>
+        </section>
+      </div>
+
+      <div class="cp-two-col">
+        <section class="panel cp-section">
+          <p class="label">Force Action</p>
+          <label>Character</label>
+          <select id="force-char"></select>
+          <label>Action Type</label>
+          <select id="force-action-type">
+            <option value="gather_resource">Gather Resource</option>
+            <option value="craft_item">Craft Item</option>
+            <option value="build_structure">Build Structure</option>
+            <option value="travel">Travel</option>
+            <option value="hunt">Hunt</option>
+            <option value="rest">Rest</option>
+            <option value="teach">Teach</option>
+            <option value="form_group">Form Group</option>
+          </select>
+          <label>Payload (JSON, optional)</label>
+          <textarea id="force-payload">{}</textarea>
+          <button id="force-action-btn" class="action-button" type="button">Queue Action</button>
+          <p id="force-action-result" class="action-result"></p>
+        </section>
+
+        <section class="panel cp-section">
+          <p class="label">World Controls</p>
+          <button id="force-tick-btn" class="action-button" type="button">Force Tick Run</button>
+          <p id="force-tick-result" class="action-result"></p>
+          <hr style="border-color:var(--line-soft);margin:10px 0" />
+          <label>Broadcast Message</label>
+          <input type="text" id="broadcast-msg" placeholder="e.g. Server restart in 10 minutes" maxlength="500" />
+          <button id="broadcast-btn" class="secondary-button" type="button">Send Broadcast</button>
+          <p id="broadcast-result" class="action-result"></p>
+        </section>
+      </div>
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
         <section class="panel">
@@ -73,11 +145,12 @@
 
       <section class="panel">
         <p class="label">Event Replay</p>
-        <div class="replay-controls">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0">
           <input type="number" id="replay-from" placeholder="From tick" min="1" />
           <input type="number" id="replay-to" placeholder="To tick" min="1" />
           <input type="number" id="replay-limit" placeholder="Limit" value="100" min="1" max="500" />
           <button id="replay-btn" class="secondary-button" type="button">Load Replay</button>
+          <button id="cleanup-sessions-btn" class="secondary-button" type="button">Cleanup Sessions</button>
         </div>
         <pre id="replay-output" class="status-text">Click "Load Replay" to view events.</pre>
       </section>

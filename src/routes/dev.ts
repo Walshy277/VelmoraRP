@@ -2,6 +2,11 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { pool } from '../db/pool.js';
 import { loadReplayEvents } from '../simulation/replay.js';
+import { requireCreator } from '../auth/middleware.js';
+import type { CreatorRequest } from '../auth/middleware.js';
+import { enqueueAction } from '../actions/actionQueue.js';
+import { beginTransaction, commitTransaction, rollbackTransaction } from '../db/transactions.js';
+import { recordHistoricalEvent } from '../events/historicalEvents.js';
 
 export const devRouter = Router();
 
@@ -50,10 +55,8 @@ devRouter.get('/dev/state', async (_request, response, next) => {
         )
       ]);
 
-    // Current tick info
     const currentTick = ticks.rows[0] ?? null;
 
-    // Average tick duration
     const avgDuration = await pool.query(
       `SELECT COALESCE(AVG(duration_ms), 0)::int AS avg_ms FROM world_ticks WHERE status = 'completed'`
     );
@@ -149,6 +152,343 @@ devRouter.post('/dev/cleanup-sessions', async (_request, response, next) => {
       `DELETE FROM sessions WHERE expires_at < now() - interval '30 days'`
     );
     response.json({ deleted: result.rowCount ?? 0 });
+  } catch (error) {
+    next(error);
+  }
+});
+
+devRouter.get('/dev/me', requireCreator, async (request: CreatorRequest, response, next) => {
+  try {
+    const result = await pool.query(
+      `SELECT id, email, display_name, is_creator, created_at FROM accounts WHERE id = $1`,
+      [request.accountId]
+    );
+    const account = result.rows[0];
+    response.json({
+      account: {
+        id: account.id,
+        email: account.email,
+        displayName: account.display_name,
+        isCreator: account.is_creator,
+        createdAt: account.created_at
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+devRouter.get('/dev/characters', requireCreator, async (_request: CreatorRequest, response, next) => {
+  try {
+    const result = await pool.query(
+      `SELECT c.id, c.account_id, c.region_id, c.name, c.status, c.age_days, c.health,
+              c.position_x, c.position_y, c.lineage_id, c.created_at,
+              r.name AS region_name,
+              a.display_name AS account_name,
+              i.items AS inventory
+       FROM characters c
+       LEFT JOIN regions r ON r.id = c.region_id
+       LEFT JOIN accounts a ON a.id = c.account_id
+       LEFT JOIN inventories i ON i.character_id = c.id
+       ORDER BY c.created_at DESC`
+    );
+
+    const characters = await Promise.all(result.rows.map(async (char) => {
+      const knowledgeResult = await pool.query(
+        `SELECT ke.name, ke.category, ck.proficiency
+         FROM character_knowledge ck
+         JOIN knowledge_entries ke ON ke.id = ck.knowledge_id
+         WHERE ck.character_id = $1`,
+        [char.id]
+      );
+
+      return {
+        id: char.id,
+        accountId: char.account_id,
+        accountName: char.account_name,
+        name: char.name,
+        status: char.status,
+        ageDays: char.age_days,
+        health: char.health,
+        position: { x: Number(char.position_x), y: Number(char.position_y) },
+        regionId: char.region_id,
+        regionName: char.region_name,
+        lineageId: char.lineage_id,
+        createdAt: char.created_at,
+        inventory: char.inventory ?? {},
+        knowledge: knowledgeResult.rows
+      };
+    }));
+
+    response.json({ characters });
+  } catch (error) {
+    next(error);
+  }
+});
+
+const SpawnItemsSchema = z.object({
+  characterId: z.string().uuid(),
+  items: z.record(z.number().int().nonnegative())
+});
+
+devRouter.post('/dev/spawn-items', requireCreator, async (request: CreatorRequest, response, next) => {
+  const parsed = SpawnItemsSchema.safeParse(request.body);
+
+  if (!parsed.success) {
+    response.status(400).json({ error: 'invalid_spawn', issues: parsed.error.flatten() });
+    return;
+  }
+
+  const client = await pool.connect();
+
+  try {
+    await beginTransaction(client);
+
+    const invResult = await client.query(
+      `SELECT id FROM inventories WHERE character_id = $1`, [parsed.data.characterId]
+    );
+
+    if (invResult.rows.length === 0) {
+      await client.query(
+        `INSERT INTO inventories (character_id, items) VALUES ($1, $2::jsonb)`,
+        [parsed.data.characterId, JSON.stringify(parsed.data.items)]
+      );
+    } else {
+      for (const [item, qty] of Object.entries(parsed.data.items)) {
+        await client.query(
+          `UPDATE inventories SET items = jsonb_set(
+            items,
+            CASE WHEN items ? $2 THEN ARRAY[$2] ELSE ARRAY[$2] END,
+            CASE
+              WHEN items ? $2 THEN to_jsonb((items->>$2)::int + $3)
+              ELSE to_jsonb($3)
+            END,
+            true
+          ) WHERE id = $1`,
+          [invResult.rows[0].id, item, qty]
+        );
+      }
+    }
+
+    const charResult = await client.query('SELECT name FROM characters WHERE id = $1', [parsed.data.characterId]);
+    const charName = charResult.rows[0]?.name ?? 'Unknown';
+
+    await recordHistoricalEvent(
+      {
+        scope: 'world',
+        eventType: 'creator_spawn',
+        summary: `The Creator bestowed resources upon ${charName}.`,
+        payload: { items: parsed.data.items, characterId: parsed.data.characterId }
+      },
+      client
+    );
+
+    await commitTransaction(client);
+
+    response.json({ spawned: parsed.data.items, characterId: parsed.data.characterId });
+  } catch (error) {
+    await rollbackTransaction(client);
+    next(error);
+  } finally {
+    client.release();
+  }
+});
+
+const ModifyCharacterSchema = z.object({
+  characterId: z.string().uuid(),
+  health: z.number().int().min(0).max(100).optional(),
+  status: z.string().optional(),
+  positionX: z.number().optional(),
+  positionY: z.number().optional(),
+  regionId: z.string().uuid().optional(),
+  ageDays: z.number().int().nonnegative().optional()
+});
+
+devRouter.post('/dev/modify-character', requireCreator, async (request: CreatorRequest, response, next) => {
+  const parsed = ModifyCharacterSchema.safeParse(request.body);
+
+  if (!parsed.success) {
+    response.status(400).json({ error: 'invalid_modify', issues: parsed.error.flatten() });
+    return;
+  }
+
+  const client = await pool.connect();
+
+  try {
+    const updates: string[] = [];
+    const values: unknown[] = [];
+    let idx = 1;
+
+    if (parsed.data.health !== undefined) {
+      updates.push(`health = $${idx++}`);
+      values.push(parsed.data.health);
+    }
+    if (parsed.data.status !== undefined) {
+      updates.push(`status = $${idx++}::character_status`);
+      values.push(parsed.data.status);
+    }
+    if (parsed.data.positionX !== undefined) {
+      updates.push(`position_x = $${idx++}`);
+      values.push(parsed.data.positionX);
+    }
+    if (parsed.data.positionY !== undefined) {
+      updates.push(`position_y = $${idx++}`);
+      values.push(parsed.data.positionY);
+    }
+    if (parsed.data.regionId !== undefined) {
+      updates.push(`region_id = $${idx++}`);
+      values.push(parsed.data.regionId);
+    }
+    if (parsed.data.ageDays !== undefined) {
+      updates.push(`age_days = $${idx++}`);
+      values.push(parsed.data.ageDays);
+    }
+
+    if (updates.length === 0) {
+      response.status(400).json({ error: 'no_fields_to_update' });
+      return;
+    }
+
+    values.push(parsed.data.characterId);
+    const result = await client.query(
+      `UPDATE characters SET ${updates.join(', ')} WHERE id = $${idx} RETURNING id, name, health, status`,
+      values
+    );
+
+    if (result.rows.length === 0) {
+      response.status(404).json({ error: 'character_not_found' });
+      return;
+    }
+
+    await recordHistoricalEvent(
+      {
+        scope: 'world',
+        eventType: 'creator_modify',
+        summary: `The Creator intervened in the fate of ${result.rows[0].name}.`,
+        payload: { characterId: parsed.data.characterId, changes: parsed.data }
+      },
+      client
+    );
+
+    response.json({ character: result.rows[0] });
+  } catch (error) {
+    next(error);
+  } finally {
+    client.release();
+  }
+});
+
+const ForceActionSchema = z.object({
+  characterId: z.string().uuid(),
+  actionType: z.string().min(1).max(64),
+  payload: z.record(z.unknown()).optional().default({})
+});
+
+devRouter.post('/dev/force-action', requireCreator, async (request: CreatorRequest, response, next) => {
+  const parsed = ForceActionSchema.safeParse(request.body);
+
+  if (!parsed.success) {
+    response.status(400).json({ error: 'invalid_force_action', issues: parsed.error.flatten() });
+    return;
+  }
+
+  try {
+    const client = await pool.connect();
+    try {
+      const id = await enqueueAction(client, {
+        accountId: request.accountId,
+        characterId: parsed.data.characterId,
+        actionType: parsed.data.actionType,
+        availableTick: 0,
+        payload: { ...parsed.data.payload, characterId: parsed.data.characterId }
+      });
+
+      response.status(201).json({ id, status: 'queued_immediate' });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    next(error);
+  }
+});
+
+devRouter.post('/dev/force-tick', requireCreator, async (_request: CreatorRequest, response, next) => {
+  try {
+    const lastTick = await pool.query(
+      `SELECT tick_number FROM world_ticks ORDER BY tick_number DESC LIMIT 1`
+    );
+    const nextTick = (lastTick.rows[0]?.tick_number ?? 0) + 1;
+
+    await pool.query(
+      `INSERT INTO world_ticks (tick_number, status, started_at)
+       VALUES ($1, 'running', now())`, [nextTick]
+    );
+
+    response.json({ tickNumber: nextTick, status: 'forced' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+devRouter.post('/dev/broadcast', requireCreator, async (request: CreatorRequest, response, next) => {
+  const parsed = z.object({ message: z.string().min(1).max(500) }).safeParse(request.body);
+
+  if (!parsed.success) {
+    response.status(400).json({ error: 'invalid_broadcast', issues: parsed.error.flatten() });
+    return;
+  }
+
+  try {
+    const client = await pool.connect();
+    try {
+      await recordHistoricalEvent(
+        {
+          scope: 'world',
+          eventType: 'creator_broadcast',
+          summary: `[Creator] ${parsed.data.message}`,
+          payload: { message: parsed.data.message }
+        },
+        client
+      );
+
+      response.json({ status: 'broadcast_sent', message: parsed.data.message });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    next(error);
+  }
+});
+
+devRouter.post('/dev/set-creator', async (request, response, next) => {
+  const parsed = z.object({ email: z.string().email() }).safeParse(request.body);
+
+  if (!parsed.success) {
+    response.status(400).json({ error: 'invalid_email', issues: parsed.error.flatten() });
+    return;
+  }
+
+  try {
+    const existingCreator = await pool.query(
+      `SELECT COUNT(*)::int AS count FROM accounts WHERE is_creator = true`
+    );
+
+    if (existingCreator.rows[0].count > 0) {
+      response.status(400).json({ error: 'creator_already_exists' });
+      return;
+    }
+
+    const result = await pool.query(
+      `UPDATE accounts SET is_creator = true WHERE email = $1 RETURNING id, email, display_name, is_creator`,
+      [parsed.data.email.toLowerCase()]
+    );
+
+    if (result.rows.length === 0) {
+      response.status(404).json({ error: 'account_not_found' });
+      return;
+    }
+
+    response.json({ account: result.rows[0], status: 'elevated_to_creator' });
   } catch (error) {
     next(error);
   }

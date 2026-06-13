@@ -9,6 +9,7 @@ let authListeners = [];
 
 export function getSessionToken() { return sessionToken; }
 export function getSessionAccount() { return sessionAccount; }
+export function isCreator() { return sessionAccount?.isCreator === true; }
 export function getMyCharacters() { return myCharacters; }
 export function getActiveCharacterId() { return activeCharacterId; }
 export function onAuthChange(fn) { authListeners.push(fn); }
@@ -65,6 +66,8 @@ export function renderAuthUI() {
         ? `Characters: ${myCharacters.map(c => c.name).join(', ')}`
         : 'No characters yet.';
     }
+    const devLink = document.querySelector('#dev-panel-link');
+    if (devLink) devLink.style.display = sessionAccount.isCreator ? '' : 'none';
   } else {
     accountPanel.style.display = '';
     sessionPanel.style.display = 'none';
