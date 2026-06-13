@@ -31,7 +31,7 @@ describe('MVP Integration Loop', () => {
   function ctx(): TickContext {
     return {
       tickNumber,
-      gameDay: 1,
+      gameDay: null,
       startedAt: new Date(),
       pool,
       client

@@ -10,7 +10,7 @@ devRouter.get('/dev/state', async (_request, response, next) => {
     const [ticks, systems, actions, history, sessions, accounts, chars, groups, settlements, structures] =
       await Promise.all([
         pool.query(
-          `SELECT tick_number, game_day, status, duration_ms, started_at, completed_at
+          `SELECT tick_number, status, duration_ms, started_at, completed_at
            FROM world_ticks ORDER BY tick_number DESC LIMIT 10`
         ),
         pool.query(

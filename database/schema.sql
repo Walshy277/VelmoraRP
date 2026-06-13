@@ -40,26 +40,11 @@ CREATE UNIQUE INDEX idx_accounts_single_creator ON accounts(is_creator) WHERE is
 CREATE TABLE world_ticks (
   id BIGSERIAL PRIMARY KEY,
   tick_number BIGINT NOT NULL UNIQUE,
-  game_day BIGINT CHECK (game_day IS NULL OR game_day >= 1),
   started_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   completed_at TIMESTAMPTZ,
   duration_ms INTEGER,
   status tick_status NOT NULL DEFAULT 'running'
 );
-
-CREATE TABLE world_calendar (
-  id BOOLEAN PRIMARY KEY DEFAULT true,
-  day_one_started_at TIMESTAMPTZ,
-  day_one_started_by_account_id UUID REFERENCES accounts(id) ON DELETE SET NULL,
-  day_length_seconds INTEGER NOT NULL DEFAULT 86400 CHECK (day_length_seconds > 0),
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  CHECK (id = true)
-);
-
-INSERT INTO world_calendar (id)
-VALUES (true)
-ON CONFLICT (id) DO NOTHING;
 
 CREATE TABLE simulation_system_runs (
   id BIGSERIAL PRIMARY KEY,

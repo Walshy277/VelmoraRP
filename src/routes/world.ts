@@ -32,28 +32,6 @@ worldRouter.get('/world/history', async (_request, response, next) => {
   }
 });
 
-worldRouter.get('/world/calendar', async (_request, response, next) => {
-  try {
-    const result = await pool.query(
-      `SELECT
-         day_one_started_at,
-         day_one_started_by_account_id,
-         day_length_seconds,
-         CASE
-           WHEN day_one_started_at IS NULL THEN NULL
-           ELSE FLOOR(EXTRACT(EPOCH FROM (now() - day_one_started_at)) / day_length_seconds)::bigint + 1
-         END AS game_day,
-         day_one_started_at IS NOT NULL AS has_time_concept
-       FROM world_calendar
-       WHERE id = true`
-    );
-
-    response.json({ calendar: result.rows[0] });
-  } catch (error) {
-    next(error);
-  }
-});
-
 worldRouter.get('/world/characters', async (_request, response, next) => {
   try {
     const result = await pool.query(
@@ -140,6 +118,96 @@ worldRouter.get('/world/territory', async (_request, response, next) => {
     );
 
     response.json({ territory: result.rows });
+  } catch (error) {
+    next(error);
+  }
+});
+
+worldRouter.get('/world/relationships', async (_request, response, next) => {
+  try {
+    const result = await pool.query(
+      `SELECT gr.source_group_id, gr.target_group_id, gr.stance, gr.trust, gr.tension, gr.updated_at,
+              sg.name AS source_group_name,
+              tg.name AS target_group_name
+       FROM group_relationships gr
+       LEFT JOIN groups sg ON sg.id = gr.source_group_id
+       LEFT JOIN groups tg ON tg.id = gr.target_group_id
+       ORDER BY gr.updated_at DESC`
+    );
+
+    response.json({ relationships: result.rows });
+  } catch (error) {
+    next(error);
+  }
+});
+
+worldRouter.get('/world/lineages/:id', async (request, response, next) => {
+  try {
+    const { id } = request.params;
+
+    const lineageResult = await pool.query(
+      `SELECT id, family_name, founder_character_id, cultural_memory, founded_at
+       FROM lineages
+       WHERE id = $1`,
+      [id]
+    );
+
+    if (lineageResult.rows.length === 0) {
+      response.status(404).json({ error: 'lineage_not_found' });
+      return;
+    }
+
+    const lineage = lineageResult.rows[0];
+
+    const membersResult = await pool.query(
+      `SELECT c.id, c.name, c.status, c.health, c.age_days, c.created_at,
+              r.name AS region_name
+       FROM characters c
+       LEFT JOIN regions r ON r.id = c.region_id
+       WHERE c.lineage_id = $1
+       ORDER BY c.created_at ASC`,
+      [id]
+    );
+
+    let founder = null;
+    if (lineage.founder_character_id) {
+      const founderResult = await pool.query(
+        `SELECT id, name, status, created_at FROM characters WHERE id = $1`,
+        [lineage.founder_character_id]
+      );
+      founder = founderResult.rows[0] || null;
+    }
+
+    response.json({
+      lineage: {
+        id: lineage.id,
+        familyName: lineage.family_name,
+        culturalMemory: lineage.cultural_memory,
+        foundedAt: lineage.founded_at,
+        founder,
+        members: membersResult.rows
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+worldRouter.get('/world/lineages', async (_request, response, next) => {
+  try {
+    const result = await pool.query(
+      `SELECT l.id, l.family_name, l.founder_character_id, l.founded_at,
+              COUNT(c.id) AS member_count,
+              c2.name AS founder_name
+       FROM lineages l
+       LEFT JOIN characters c ON c.lineage_id = l.id
+       LEFT JOIN characters c2 ON c2.id = l.founder_character_id
+       WHERE l.ended_at IS NULL
+       GROUP BY l.id, l.family_name, l.founder_character_id, l.founded_at, c2.name
+       ORDER BY l.founded_at ASC`
+    );
+
+    response.json({ lineages: result.rows });
   } catch (error) {
     next(error);
   }

@@ -24,6 +24,21 @@ function wireDialog(dialogId, submitId, cancelId, onSubmit) {
   cancel.addEventListener('click', () => dialog.close());
 }
 
+async function findFirstCharacter() {
+  const charsRes = await api('GET', '/world/characters');
+  if (!charsRes.ok) return null;
+  const activeId = getActiveCharacterId();
+  const myChars = (charsRes.data.characters || []).filter(c => {
+    const acc = JSON.parse(localStorage.getItem('velmora_account') || 'null');
+    return acc && c.account_id === acc.id;
+  });
+  if (activeId) {
+    const match = myChars.find(c => c.id === activeId);
+    if (match) return match;
+  }
+  return myChars[0] || null;
+}
+
 export function wireActionButtons() {
   wireDialog('#group-dialog', '#group-submit', '#group-cancel', async (dialog) => {
     if (!requireAuth()) return false;
@@ -41,13 +56,7 @@ export function wireActionButtons() {
     const name = document.querySelector('#settlement-name-input').value.trim();
     if (!name) { toast('Enter a settlement name.', 'error'); return false; }
 
-    const charsRes = await api('GET', '/world/characters');
-    if (!charsRes.ok) { toast('Could not load character data.', 'error'); return false; }
-    const myChars = (charsRes.data.characters || []).filter(c => {
-      const activeId = getActiveCharacterId();
-      return activeId ? c.id === activeId : false;
-    });
-    const char = myChars[0] || (charsRes.data.characters || [])[0];
+    const char = await findFirstCharacter();
     if (!char) { toast('No character found.', 'error'); return false; }
 
     const regionId = char.region_id;
@@ -65,11 +74,7 @@ export function wireActionButtons() {
   wireDialog('#structure-dialog', '#structure-submit', '#structure-cancel', async () => {
     if (!requireAuth()) return false;
     const kind = document.querySelector('#structure-kind').value;
-    const charsRes = await api('GET', '/world/characters');
-    if (!charsRes.ok) { toast('Could not load character data.', 'error'); return false; }
-    const activeId = getActiveCharacterId();
-    const myChars = (charsRes.data.characters || []).filter(c => activeId ? c.id === activeId : false);
-    const char = myChars[0] || (charsRes.data.characters || [])[0];
+    const char = await findFirstCharacter();
     if (!char) { toast('No character found.', 'error'); return false; }
     const { ok, data } = await api('POST', '/structures', {
       kind,
@@ -135,19 +140,43 @@ export function wireActionButtons() {
         navigateTo(a);
       } else {
         const actionMap = {
-          travel: 'travel',
-          forage: 'gather_resource',
-          govern: null,
-          chronicle: null
+          travel: { type: 'travel', needsRegion: true },
+          forage: { type: 'gather_resource', needsResource: true },
+          hunt: { type: 'hunt' },
+          rest: { type: 'rest' }
         };
         const mapped = actionMap[a];
         if (mapped) {
           if (!requireAuth()) return;
-          const result = await submitAction(mapped);
-          if (result.ok) {
-            toast(`Action queued: ${mapped}`, 'success');
+
+          if (mapped.type === 'travel') {
+            const regionsRes = await api('GET', '/world/regions');
+            if (!regionsRes.ok) { toast('Could not load regions.', 'error'); return; }
+            const regions = regionsRes.data.regions || [];
+            if (regions.length <= 1) { toast('Only one region available.', 'info'); return; }
+            const char = await findFirstCharacter();
+            if (!char) { toast('No character.', 'error'); return; }
+            const otherRegions = regions.filter(r => r.id !== char.region_id);
+            if (otherRegions.length === 0) { toast('No other regions to travel to.', 'info'); return; }
+            const target = otherRegions[0];
+            const result = await submitAction('travel', { regionId: target.id });
+            if (result.ok) { toast(`Traveling to ${target.name}!`, 'success'); }
+            else { toast(result.data?.error || 'Travel failed', 'error'); }
+          } else if (mapped.type === 'gather_resource') {
+            const char = await findFirstCharacter();
+            if (!char) { toast('No character.', 'error'); return; }
+            const resourceRes = await api('GET', '/world/regions');
+            if (!resourceRes.ok) { toast('Could not load resources.', 'error'); return; }
+            const result = await submitAction('gather_resource', { characterId: getActiveCharacterId() });
+            if (result.ok) { toast('Foraging queued!', 'success'); }
+            else { toast(result.data?.error || 'Foraging failed', 'error'); }
           } else {
-            toast(result.data?.error || result.error || 'Action failed', 'error');
+            const result = await submitAction(mapped.type);
+            if (result.ok) {
+              toast(`Action queued: ${mapped.type}`, 'success');
+            } else {
+              toast(result.data?.error || result.error || 'Action failed', 'error');
+            }
           }
         } else {
           toast(`"${a}" is not yet wired.`, 'info');

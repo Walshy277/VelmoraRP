@@ -1,9 +1,8 @@
-const clientState = { calendar: null, regions: [], events: [], apiOnline: false };
+const clientState = { regions: [], events: [], apiOnline: false };
 
 export function getClientState() { return clientState; }
 
-export function setWorldState(calendar, regions, events, online) {
-  clientState.calendar = calendar;
+export function setWorldState(regions, events, online) {
   clientState.regions = regions || [];
   clientState.events = events || [];
   clientState.apiOnline = online;
@@ -26,18 +25,15 @@ function makeListItem(primary, secondary) {
 }
 
 function renderDerivedWorldState() {
-  const calendar = clientState.calendar;
   const regionTotal = clientState.regions.length;
   const historyTotal = clientState.events.length;
-  const day = Number(calendar?.game_day ?? 0);
-  const hasCalendar = Boolean(calendar?.has_time_concept);
   const apiLabel = clientState.apiOnline ? 'API connected' : 'Static preview';
 
-  text('#world-state', hasCalendar ? 'Civilization begins' : 'Dawn of settlement');
-  text('#game-day', hasCalendar ? `Day ${day}` : `${apiLabel}: no calendar`);
-  text('#calendar-status', hasCalendar ? `Day ${day}` : 'Not invented');
+  text('#world-state', 'Dawn of Civilization');
+  text('#game-day', apiLabel);
+  text('#calendar-status', regionTotal > 0 ? `${regionTotal} regions available` : 'No regions');
   text('#region-count', String(regionTotal));
-  text('#population-stat', hasCalendar ? 'First generation active' : '0 registered');
+  text('#population-stat', '0 registered');
   text('#culture-stat', historyTotal > 0 ? 'Emerging from events' : 'Unformed');
   text('#religion-stat', 'No shared rites');
   text('#government-stat', 'None');
@@ -48,8 +44,8 @@ function renderDerivedWorldState() {
   text('#footer-civilizations', 'Civilizations: 0');
   text('#footer-cultures', `Cultures: ${historyTotal > 0 ? '1 emerging' : '0'}`);
   text('#footer-polities', 'Active polities: 0');
-  text('#footer-population', hasCalendar ? 'Registered population: started' : 'Registered population: 0');
-  text('#footer-age', hasCalendar ? `World age: ${day} days` : 'World age: awaiting Day 1');
+  text('#footer-population', 'Registered population: 0');
+  text('#footer-age', 'World age: tick simulation running');
 }
 
 function renderHistory() {
@@ -123,13 +119,12 @@ function renderAll() {
 export async function loadWorldState() {
   const { api } = await import('./api.js');
   try {
-    const [cal, reg, hist] = await Promise.all([
-      api('GET', '/world/calendar'),
+    const [reg, hist] = await Promise.all([
       api('GET', '/world/regions'),
       api('GET', '/world/history')
     ]);
-    setWorldState(cal.data.calendar, reg.data.regions, hist.data.events, true);
+    setWorldState(reg.data.regions, hist.data.events, true);
   } catch {
-    setWorldState(null, [], [], false);
+    setWorldState([], [], false);
   }
 }

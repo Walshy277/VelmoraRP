@@ -78,7 +78,7 @@ function renderTicks(ticks) {
     ...ticks.map(t => {
       const item = document.createElement('li');
       item.className = `tick-row ${t.status === 'completed' ? 'ok' : 'fail'}`;
-      item.textContent = `Tick ${t.tick_number} | ${t.status} | day ${t.game_day ?? '—'} | ${t.duration_ms ?? '—'}ms | ${t.started_at ? new Date(t.started_at).toLocaleTimeString() : ''}`;
+      item.textContent = `Tick ${t.tick_number} | ${t.status} | ${t.duration_ms ?? '—'}ms | ${t.started_at ? new Date(t.started_at).toLocaleTimeString() : ''}`;
       return item;
     })
   );

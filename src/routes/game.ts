@@ -49,8 +49,18 @@ gameRouter.post('/actions', async (request: AuthenticatedRequest, response, next
 
 const CreateCharacterSchema = z.object({
   name: z.string().trim().min(2).max(40),
-  regionId: z.string().uuid().optional()
+  regionId: z.string().uuid().optional(),
+  focus: z.enum(['survivor', 'builder', 'gatherer', 'crafter']).optional().default('survivor')
 });
+
+const FOCUS_STARTER_KITS: Record<string, { items: Record<string, number>; knowledge: string[] }> = {
+  survivor: { items: { food: 10, water: 10, stone: 2, wood: 3 }, knowledge: ['Basic Foraging'] },
+  builder: { items: { food: 3, water: 3, stone: 5, wood: 8 }, knowledge: ['Stone Toolmaking', 'Simple Shelter'] },
+  gatherer: { items: { food: 5, water: 5, fiber: 6, wood: 2 }, knowledge: ['Basic Foraging'] },
+  crafter: { items: { food: 3, water: 3, stone: 4, wood: 4, fiber: 3 }, knowledge: ['Stone Toolmaking'] }
+};
+
+const MAX_CHARACTERS_PER_ACCOUNT = 20;
 
 gameRouter.post('/characters', async (request: AuthenticatedRequest, response, next) => {
   const parsed = CreateCharacterSchema.safeParse(request.body);
@@ -69,14 +79,14 @@ gameRouter.post('/characters', async (request: AuthenticatedRequest, response, n
       request.accountId
     ]);
 
-    if (existingCount.rows[0].count > 3) {
-      response.status(400).json({ error: 'max_characters_reached', maxCharacters: 3 });
+    if (existingCount.rows[0].count >= MAX_CHARACTERS_PER_ACCOUNT) {
+      response.status(400).json({ error: 'max_characters_reached', maxCharacters: MAX_CHARACTERS_PER_ACCOUNT });
       return;
     }
 
     let regionId = parsed.data.regionId;
     if (!regionId) {
-      const regionResult = await client.query('SELECT id FROM regions ORDER BY created_at ASC LIMIT 1');
+      const regionResult = await client.query('SELECT id, name FROM regions ORDER BY created_at ASC LIMIT 1');
       if (regionResult.rows.length === 0) {
         response.status(400).json({ error: 'no_regions_available' });
         return;
@@ -106,19 +116,23 @@ gameRouter.post('/characters', async (request: AuthenticatedRequest, response, n
 
     await client.query('UPDATE lineages SET founder_character_id = $1 WHERE id = $2', [character.id, lineageId]);
 
-    await client.query(
-      `INSERT INTO inventories (character_id, items)
-       VALUES ($1, '{"food": 5, "water": 5, "stone": 2, "wood": 3}'::jsonb)`,
-      [character.id]
-    );
+    const kit = FOCUS_STARTER_KITS[parsed.data.focus] ?? FOCUS_STARTER_KITS.survivor;
 
     await client.query(
-      `INSERT INTO character_knowledge (character_id, knowledge_id, proficiency, source_event_id)
-       SELECT $1, id, 25, NULL
-       FROM knowledge_entries
-       WHERE name IN ('Basic Foraging', 'Stone Toolmaking')`,
-      [character.id]
+      `INSERT INTO inventories (character_id, items)
+       VALUES ($1, $2::jsonb)`,
+      [character.id, JSON.stringify(kit.items)]
     );
+
+    for (const knowledgeName of kit.knowledge) {
+      await client.query(
+        `INSERT INTO character_knowledge (character_id, knowledge_id, proficiency, source_event_id)
+         SELECT $1, id, 30, NULL
+         FROM knowledge_entries
+         WHERE name = $2`,
+        [character.id, knowledgeName]
+      );
+    }
 
     await recordHistoricalEvent(
       {
@@ -126,7 +140,7 @@ gameRouter.post('/characters', async (request: AuthenticatedRequest, response, n
         eventType: 'character_created',
         characterId: character.id,
         regionId,
-        summary: `${parsed.data.name} was born into the world.`
+        summary: `${parsed.data.name} was born into the world with a ${parsed.data.focus} focus.`
       },
       client
     );
@@ -140,10 +154,13 @@ gameRouter.post('/characters', async (request: AuthenticatedRequest, response, n
         status: character.status,
         ageDays: character.age_days,
         health: character.health,
+        focus: parsed.data.focus,
         position: { x: Number(character.position_x), y: Number(character.position_y) },
         regionId: character.region_id,
         lineageId: character.lineage_id,
-        createdAt: character.created_at
+        createdAt: character.created_at,
+        inventory: kit.items,
+        knowledge: kit.knowledge
       }
     });
   } catch (error) {
@@ -433,5 +450,117 @@ gameRouter.post('/structures', async (request: AuthenticatedRequest, response, n
     next(error);
   } finally {
     client.release();
+  }
+});
+
+const ChronicleSchema = z.object({
+  title: z.string().trim().min(1).max(200),
+  body: z.string().trim().min(1).max(5000),
+  scope: z.enum(['character', 'settlement', 'group', 'region', 'world']).optional().default('character')
+});
+
+gameRouter.post('/chronicles', async (request: AuthenticatedRequest, response, next) => {
+  const parsed = ChronicleSchema.safeParse(request.body);
+
+  if (!parsed.success) {
+    response.status(400).json({ error: 'invalid_chronicle', issues: parsed.error.flatten() });
+    return;
+  }
+
+  try {
+    const client = await pool.connect();
+    try {
+      const charResult = await client.query(
+        `SELECT id, region_id, name FROM characters WHERE account_id = $1 ORDER BY created_at ASC LIMIT 1`,
+        [request.accountId]
+      );
+
+      const characterId = charResult.rows.length > 0 ? charResult.rows[0].id : null;
+      const regionId = charResult.rows.length > 0 ? charResult.rows[0].region_id : null;
+      const characterName = charResult.rows.length > 0 ? charResult.rows[0].name : 'Anonymous';
+
+      const result = await client.query(
+        `INSERT INTO historical_events (scope, event_type, character_id, region_id, summary, payload)
+         VALUES ($1, 'chronicle', $2, $3, $4, $5::jsonb)
+         RETURNING id, summary, created_at`,
+        [
+          parsed.data.scope,
+          characterId,
+          regionId,
+          `${characterName} chronicled: ${parsed.data.title}`,
+          JSON.stringify({ title: parsed.data.title, body: parsed.data.body })
+        ]
+      );
+
+      response.status(201).json({ chronicle: result.rows[0] });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    next(error);
+  }
+});
+
+gameRouter.get('/characters/my', async (request: AuthenticatedRequest, response, next) => {
+  try {
+    const charsResult = await pool.query(
+      `SELECT c.id, c.name, c.status, c.age_days, c.health, c.position_x, c.position_y,
+              c.region_id, c.lineage_id, c.created_at,
+              r.name AS region_name,
+              i.items AS inventory
+       FROM characters c
+       LEFT JOIN regions r ON r.id = c.region_id
+       LEFT JOIN inventories i ON i.character_id = c.id
+       WHERE c.account_id = $1
+       ORDER BY c.created_at DESC`,
+      [request.accountId]
+    );
+
+    const characters = await Promise.all(charsResult.rows.map(async (char) => {
+      const knowledgeResult = await pool.query(
+        `SELECT ke.name, ke.category, ck.proficiency
+         FROM character_knowledge ck
+         JOIN knowledge_entries ke ON ke.id = ck.knowledge_id
+         WHERE ck.character_id = $1`,
+        [char.id]
+      );
+
+      const actionResult = await pool.query(
+        `SELECT action_type, status, result, rejection_reason, created_at, processed_at
+         FROM player_actions
+         WHERE character_id = $1
+         ORDER BY created_at DESC
+         LIMIT 10`,
+        [char.id]
+      );
+
+      const injuryResult = await pool.query(
+        `SELECT kind, severity, efficiency_penalty, movement_penalty, influence_penalty
+         FROM character_injuries
+         WHERE character_id = $1 AND recovered_at IS NULL`,
+        [char.id]
+      );
+
+      return {
+        id: char.id,
+        name: char.name,
+        status: char.status,
+        ageDays: char.age_days,
+        health: char.health,
+        position: { x: Number(char.position_x), y: Number(char.position_y) },
+        regionId: char.region_id,
+        regionName: char.region_name,
+        lineageId: char.lineage_id,
+        createdAt: char.created_at,
+        inventory: char.inventory ?? {},
+        knowledge: knowledgeResult.rows.map(k => ({ name: k.name, category: k.category, proficiency: k.proficiency })),
+        recentActions: actionResult.rows,
+        injuries: injuryResult.rows
+      };
+    }));
+
+    response.json({ characters });
+  } catch (error) {
+    next(error);
   }
 });

@@ -60,9 +60,6 @@ authRouter.post('/auth/register', registerLimiter, async (request, response, nex
           email: account.email,
           displayName: account.displayName,
           isCreator: account.isCreator
-        },
-        world: {
-          dayOneStarted: account.dayOneStarted
         }
       });
     } finally {

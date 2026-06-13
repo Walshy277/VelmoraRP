@@ -22,8 +22,8 @@
         <a href="#society">Society</a>
       </nav>
       <div class="era-clock">
-        <span id="world-state">Pre-history</span>
-        <strong id="game-day">No calendar</strong>
+        <span id="world-state">Dawn of Civilization</span>
+        <strong id="game-day">Tick-based simulation</strong>
       </div>
     </header>
 
@@ -148,6 +148,14 @@
                 <span>Camp</span>
                 <small>Create shelter and safety</small>
               </button>
+              <button class="action-button" data-action="hunt" type="button">
+                <span>Hunt</span>
+                <small>Risk injury for food</small>
+              </button>
+              <button class="action-button" data-action="rest" type="button">
+                <span>Rest</span>
+                <small>Recover health (costs food)</small>
+              </button>
               <button class="action-button" data-action="teach" type="button">
                 <span>Teach</span>
                 <small>Transmit knowledge</small>
@@ -222,7 +230,7 @@
               <li><strong>Basic Foraging</strong><span>Known through oral teaching</span></li>
               <li><strong>Stone Toolmaking</strong><span>Requires stone and wood</span></li>
               <li><strong>Simple Shelter</strong><span>Shared by builders</span></li>
-              <li><strong>Calendar</strong><span>Created only after Day 1 begins</span></li>
+              <li><strong>Calendar</strong><span>Time tracking not yet invented</span></li>
               <li><strong>Writing</strong><span>Locked until a society preserves symbols</span></li>
             </ul>
           </article>
@@ -231,8 +239,8 @@
             <p class="label">Society Pulse</p>
             <dl class="compact-stats">
               <div>
-                <dt>Calendar</dt>
-                <dd id="calendar-status">Checking...</dd>
+                <dt>Status</dt>
+                <dd id="calendar-status">Checking world...</dd>
               </div>
               <div>
                 <dt>Regions</dt>
@@ -271,6 +279,12 @@
             <p class="status-text">No knowledge data loaded.</p>
           </div>
         </section>
+        <section class="panel">
+          <p class="label">Recent Actions</p>
+          <div id="actions-view-content">
+            <p class="status-text">No recent actions.</p>
+          </div>
+        </section>
         <button class="secondary-button" onclick="window.location.hash=''">Back to Home</button>
       </section>
 
@@ -294,6 +308,12 @@
             <p class="status-text">Loading settlements...</p>
           </div>
         </section>
+        <section class="panel" id="society-structures-section">
+          <p class="label">Structures</p>
+          <div id="structures-view-content">
+            <p class="status-text">Loading structures...</p>
+          </div>
+        </section>
         <button class="secondary-button" onclick="window.location.hash=''">Back to Home</button>
       </section>
 
@@ -313,44 +333,79 @@
         <section class="panel">
           <p class="label">Culture Encyclopedia</p>
           <div id="culture-view-content">
-            <p class="status-text">Cultural records will appear as civilizations develop.</p>
+            <p class="status-text">Loading cultural records...</p>
           </div>
         </section>
         <button class="secondary-button" onclick="window.location.hash=''">Back to Home</button>
       </section>
 
-      <!-- Family View (placeholder) -->
+      <!-- Family View -->
       <section class="content view-section" id="view-family" style="display:none">
         <section class="panel">
           <p class="label">My Family</p>
-          <p class="status-text">Family tree and lineage tracking coming soon.</p>
+          <div id="family-view-content">
+            <p class="status-text">Loading lineage data...</p>
+          </div>
         </section>
         <button class="secondary-button" onclick="window.location.hash=''">Back to Home</button>
       </section>
 
-      <!-- Trade View (placeholder) -->
+      <!-- Trade View -->
       <section class="content view-section" id="view-trade" style="display:none">
         <section class="panel">
-          <p class="label">Trade</p>
-          <p class="status-text">Trade routes and marketplace coming soon.</p>
+          <p class="label">Trade &amp; Diplomacy</p>
+          <div id="trade-view-content">
+            <p class="status-text">Loading trade network...</p>
+          </div>
         </section>
         <button class="secondary-button" onclick="window.location.hash=''">Back to Home</button>
       </section>
 
-      <!-- Govern View (placeholder) -->
+      <!-- Govern View -->
       <section class="content view-section" id="view-govern" style="display:none">
         <section class="panel">
-          <p class="label">Govern</p>
-          <p class="status-text">Governance mechanics coming soon.</p>
+          <p class="label">Governance &amp; Territory</p>
+          <div id="govern-view-content">
+            <p class="status-text">Loading governance data...</p>
+          </div>
         </section>
         <button class="secondary-button" onclick="window.location.hash=''">Back to Home</button>
       </section>
 
-      <!-- Chronicle View (placeholder) -->
+      <!-- Chronicle View -->
       <section class="content view-section" id="view-chronicle" style="display:none">
         <section class="panel">
           <p class="label">Write Chronicle</p>
-          <p class="status-text">Chronicle writing system coming soon.</p>
+          <p style="margin:0 0 12px;color:var(--muted);font-size:13px">Record your character's deeds for posterity. These entries become part of the world's permanent history.</p>
+          <form id="chronicle-form" style="display:grid;gap:10px">
+            <label>
+              Title
+              <input id="chronicle-title" name="title" type="text" maxlength="200" placeholder="e.g. The Founding of Our First Camp" required />
+            </label>
+            <label>
+              Body
+              <textarea id="chronicle-body" name="body" rows="4" maxlength="5000" placeholder="Describe what happened, what it means, and who was involved..." style="width:100%;min-height:80px;border:1px solid rgba(213,178,103,0.22);border-radius:4px;background:#0f0e0b;color:#f1dfb4;padding:8px;font:inherit;resize:vertical" required></textarea>
+            </label>
+            <label>
+              Scope
+              <select id="chronicle-scope" style="width:100%;min-height:36px;background:#1a1712;border:1px solid rgba(213,178,103,0.2);color:#ead8b1;border-radius:3px;padding:4px 8px;font-size:13px">
+                <option value="character">Personal</option>
+                <option value="settlement">Settlement</option>
+                <option value="group">Group</option>
+                <option value="region">Regional</option>
+                <option value="world">World</option>
+              </select>
+            </label>
+            <div style="display:flex;gap:8px">
+              <button type="submit" class="action-button" style="flex:1">Record Chronicle</button>
+            </div>
+          </form>
+        </section>
+        <section class="panel">
+          <p class="label">Recent Chronicles</p>
+          <div id="chronicle-view-content">
+            <p class="status-text">Loading chronicles...</p>
+          </div>
         </section>
         <button class="secondary-button" onclick="window.location.hash=''">Back to Home</button>
       </section>
@@ -374,7 +429,7 @@
             <button type="submit" id="register-submit">Register</button>
             <button type="button" id="login-submit" class="secondary-button">Log In</button>
           </form>
-          <p id="auth-result" class="status-text">The first account becomes creator. The next begins Day 1.</p>
+          <p id="auth-result" class="status-text">Register to enter the world.</p>
         </section>
 
         <section class="panel" id="session-panel" style="display: none">
@@ -400,14 +455,30 @@
     <div id="toast-container" class="toast-container" aria-live="polite"></div>
 
     <dialog id="character-dialog" class="modal">
-      <form id="character-form" method="dialog">
-        <p class="label">Create Character</p>
-        <label>
-          Name
-          <input id="character-name" name="name" type="text" minlength="2" maxlength="40" required />
-        </label>
-        <button type="submit">Claim Character</button>
-        <button type="button" id="character-cancel" class="secondary-button">Cancel</button>
+      <form id="character-form">
+        <div class="modal-header">
+          <p class="label">A New Soul Enters the World</p>
+          <p style="font-size:13px;color:var(--muted);margin:0">Choose your name and the gifts you carry into the wild.</p>
+        </div>
+        <div class="modal-body">
+          <label>
+            Name
+            <input id="character-name" name="name" type="text" minlength="2" maxlength="40" placeholder="e.g. Kaelen, Vash, Mira" required />
+          </label>
+          <label>
+            Birth-Gift (Starting Focus)
+            <select id="character-focus">
+              <option value="survivor">Survivor — born resilient, extra food &amp; water</option>
+              <option value="builder">Builder — born with strong hands, stone &amp; wood</option>
+              <option value="gatherer">Gatherer — born to the wild, fiber &amp; foraging</option>
+              <option value="crafter">Crafter — born clever, balanced resources</option>
+            </select>
+          </label>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="action-button" style="flex:1">Enter the World</button>
+          <button type="button" id="character-cancel" class="secondary-button">Not Yet</button>
+        </div>
       </form>
     </dialog>
 
@@ -472,6 +543,12 @@
             <option value="stone_knife">Stone Knife (2 stone, 1 wood)</option>
             <option value="woven_basket">Woven Basket (4 fiber)</option>
             <option value="fishing_spear">Fishing Spear (3 wood, 1 stone)</option>
+            <option value="wooden_spear">Wooden Spear (3 wood)</option>
+            <option value="sling">Sling (2 fiber)</option>
+            <option value="fire_bow">Fire Bow (2 wood, 1 fiber)</option>
+            <option value="clay_pot">Clay Pot (3 clay)</option>
+            <option value="bandage">Bandage (2 fiber)</option>
+            <option value="campfire_kit">Campfire Kit (2 wood, 1 stone)</option>
           </select>
         </label>
         <button type="submit" id="craft-submit">Craft</button>
@@ -500,7 +577,7 @@
       <span id="footer-cultures">Cultures: 0</span>
       <span id="footer-polities">Active polities: 0</span>
       <span id="footer-population">Registered population: 0</span>
-      <span id="footer-age">World age: awaiting Day 1</span>
+      <span id="footer-age">World age: tick-based timeline</span>
       <button data-action="rules" type="button">Rules</button>
       <button data-action="wiki" type="button">Wiki</button>
       <button data-action="support" type="button">Support</button>

@@ -7,18 +7,48 @@ function buildResult(result: Record<string, unknown>): string {
   return JSON.stringify(result);
 }
 
+const CRAFTING_RECIPES: Record<string, { requires: Record<string, number>; produces: string; amount: number }> = {
+  stone_axe: { requires: { stone: 3, wood: 2 }, produces: 'stone_axe', amount: 1 },
+  stone_knife: { requires: { stone: 2, wood: 1 }, produces: 'stone_knife', amount: 1 },
+  woven_basket: { requires: { fiber: 4 }, produces: 'woven_basket', amount: 1 },
+  fishing_spear: { requires: { wood: 3, stone: 1 }, produces: 'fishing_spear', amount: 1 },
+  wooden_spear: { requires: { wood: 3 }, produces: 'wooden_spear', amount: 1 },
+  sling: { requires: { fiber: 2 }, produces: 'sling', amount: 1 },
+  fire_bow: { requires: { wood: 2, fiber: 1 }, produces: 'fire_bow', amount: 1 },
+  clay_pot: { requires: { clay: 3 }, produces: 'clay_pot', amount: 1 },
+  bandage: { requires: { fiber: 2 }, produces: 'bandage', amount: 1 },
+  campfire_kit: { requires: { wood: 2, stone: 1 }, produces: 'campfire_kit', amount: 1 }
+};
+
 async function processGatherResource(
   client: PoolClient,
   actionId: string,
   payload: Record<string, unknown>
 ): Promise<void> {
-  const nodeId = payload.resourceNodeId as string | undefined;
+  let nodeId = payload.resourceNodeId as string | undefined;
   const characterId = payload.characterId as string | undefined;
+
+  if (!nodeId && characterId) {
+    const charRegion = await client.query(
+      `SELECT region_id FROM characters WHERE id = $1`,
+      [characterId]
+    );
+    if (charRegion.rows.length > 0) {
+      const regionId = charRegion.rows[0].region_id;
+      const autoNode = await client.query(
+        `SELECT id FROM resource_nodes WHERE region_id = $1 AND quantity > 0 ORDER BY random() LIMIT 1`,
+        [regionId]
+      );
+      if (autoNode.rows.length > 0) {
+        nodeId = autoNode.rows[0].id;
+      }
+    }
+  }
 
   if (!nodeId) {
     await client.query(
-      `UPDATE player_actions SET status = 'rejected', rejection_reason = 'Missing resource_node_id', result = $2 WHERE id = $1`,
-      [actionId, buildResult({ error: 'missing_resource_node_id' })]
+      `UPDATE player_actions SET status = 'rejected', rejection_reason = 'No resource node found in region', result = $2 WHERE id = $1`,
+      [actionId, buildResult({ error: 'no_resource_node_available' })]
     );
     return;
   }
@@ -95,14 +125,7 @@ async function processCraftItem(client: PoolClient, actionId: string, payload: R
     return;
   }
 
-  const recipes: Record<string, { requires: Record<string, number>; produces: string; amount: number }> = {
-    stone_axe: { requires: { stone: 3, wood: 2 }, produces: 'stone_axe', amount: 1 },
-    stone_knife: { requires: { stone: 2, wood: 1 }, produces: 'stone_knife', amount: 1 },
-    woven_basket: { requires: { fiber: 4 }, produces: 'woven_basket', amount: 1 },
-    fishing_spear: { requires: { wood: 3, stone: 1 }, produces: 'fishing_spear', amount: 1 }
-  };
-
-  const recipeDef = recipes[recipe];
+  const recipeDef = CRAFTING_RECIPES[recipe];
   if (!recipeDef) {
     await client.query(
       `UPDATE player_actions SET status = 'rejected', rejection_reason = 'Unknown recipe', result = $2 WHERE id = $1`,
@@ -407,6 +430,124 @@ async function processFormGroup(client: PoolClient, actionId: string, payload: R
   );
 }
 
+async function processHunt(client: PoolClient, actionId: string, payload: Record<string, unknown>): Promise<void> {
+  const characterId = payload.characterId as string | undefined;
+
+  if (!characterId) {
+    await client.query(
+      `UPDATE player_actions SET status = 'rejected', rejection_reason = 'No character', result = $2 WHERE id = $1`,
+      [actionId, buildResult({ error: 'no_character' })]
+    );
+    return;
+  }
+
+  const hasWeapon = await client.query(
+    `SELECT 1 FROM inventories
+     WHERE character_id = $1
+       AND (items ? 'stone_axe' OR items ? 'wooden_spear' OR items ? 'fishing_spear')`,
+    [characterId]
+  );
+
+  const weaponBonus = hasWeapon.rows.length > 0 ? 2 : 0;
+  const huntAmount = 2 + Math.floor(Math.random() * 4) + weaponBonus;
+  const injuryRisk = Math.random();
+
+  const invResult = await client.query(`SELECT id FROM inventories WHERE character_id = $1`, [characterId]);
+  const invId = invResult.rows[0]?.id;
+
+  if (invId) {
+    await client.query(
+      `UPDATE inventories SET items = jsonb_set(
+        items,
+        CASE WHEN items ? 'food' THEN ARRAY['food'] ELSE ARRAY['food'] END,
+        CASE
+          WHEN items ? 'food' THEN to_jsonb((items->>'food')::int + $2)
+          ELSE to_jsonb($2)
+        END,
+        true
+      ) WHERE id = $1`,
+      [invId, huntAmount]
+    );
+  } else {
+    await client.query(
+      `INSERT INTO inventories (character_id, items)
+       VALUES ($1, jsonb_build_object('food', $2))`,
+      [characterId, huntAmount]
+    );
+  }
+
+  let injury = false;
+  if (!hasWeapon.rows.length && injuryRisk < 0.15) {
+    await client.query(
+      `INSERT INTO character_injuries (character_id, kind, severity, efficiency_penalty, movement_penalty, influence_penalty, recovery_started_at)
+       VALUES ($1, 'exhaustion', 15, 0.100, 0.100, 0, now())`,
+      [characterId]
+    );
+    injury = true;
+  }
+
+  await client.query(`UPDATE player_actions SET status = 'applied', result = $2 WHERE id = $1`, [
+    actionId,
+    buildResult({ foodGathered: huntAmount, injured: injury, weaponBonus })
+  ]);
+
+  await recordHistoricalEvent(
+    {
+      scope: 'character',
+      eventType: 'hunt',
+      characterId,
+      summary: `Hunted and gathered ${huntAmount} food${injury ? ', sustaining minor injuries.' : '.'}`,
+      payload: { foodGathered: huntAmount, injured: injury }
+    },
+    client
+  );
+}
+
+async function processRest(client: PoolClient, actionId: string, payload: Record<string, unknown>): Promise<void> {
+  const characterId = payload.characterId as string | undefined;
+
+  if (!characterId) {
+    await client.query(
+      `UPDATE player_actions SET status = 'rejected', rejection_reason = 'No character', result = $2 WHERE id = $1`,
+      [actionId, buildResult({ error: 'no_character' })]
+    );
+    return;
+  }
+
+  const healthResult = await client.query(
+    `UPDATE characters SET health = LEAST(100, health + 15) WHERE id = $1 RETURNING health`,
+    [characterId]
+  );
+
+  const foodResult = await client.query(
+    `UPDATE inventories SET items = jsonb_set(
+      items, '{food}',
+      to_jsonb(GREATEST(0, (items->>'food')::int - 1)),
+      true
+    ) WHERE character_id = $1 AND (items->>'food')::int > 0 RETURNING items`,
+    [characterId]
+  );
+
+  const newHealth = healthResult.rows[0]?.health ?? 100;
+  const consumedFood = foodResult.rowCount ?? 0;
+
+  await client.query(`UPDATE player_actions SET status = 'applied', result = $2 WHERE id = $1`, [
+    actionId,
+    buildResult({ health: newHealth, foodConsumed: consumedFood })
+  ]);
+
+  await recordHistoricalEvent(
+    {
+      scope: 'character',
+      eventType: 'rest',
+      characterId,
+      summary: `Rested and recovered. Health is now ${newHealth}.`,
+      payload: { health: newHealth, foodConsumed: consumedFood }
+    },
+    client
+  );
+}
+
 async function processAction(
   client: PoolClient,
   action: { id: string; actionType: string; payload: Record<string, unknown> }
@@ -414,6 +555,7 @@ async function processAction(
   try {
     switch (action.actionType) {
       case 'gather_resource':
+      case 'forage':
         await processGatherResource(client, action.id, action.payload);
         break;
       case 'craft_item':
@@ -430,6 +572,12 @@ async function processAction(
         break;
       case 'form_group':
         await processFormGroup(client, action.id, action.payload);
+        break;
+      case 'hunt':
+        await processHunt(client, action.id, action.payload);
+        break;
+      case 'rest':
+        await processRest(client, action.id, action.payload);
         break;
       default:
         await client.query(`UPDATE player_actions SET status = 'applied', result = $2 WHERE id = $1`, [

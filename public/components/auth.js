@@ -38,9 +38,9 @@ export function clearSession() {
 
 export async function loadMyCharacters() {
   if (!sessionToken) { myCharacters = []; notify(); return; }
-  const { ok, data } = await api('GET', '/world/characters');
+  const { ok, data } = await api('GET', '/characters/my');
   if (ok) {
-    myCharacters = (data.characters || []).filter(c => c.account_id === sessionAccount.id);
+    myCharacters = data.characters || [];
     if (myCharacters.length > 0 && !activeCharacterId) {
       activeCharacterId = myCharacters[0].id;
       localStorage.setItem('velmora_active_character', activeCharacterId);
@@ -92,8 +92,8 @@ export async function handleLogout() {
   clearSession();
 }
 
-export async function createCharacter(name) {
-  const { ok, data } = await api('POST', '/characters', { name });
+export async function createCharacter(name, focus) {
+  const { ok, data } = await api('POST', '/characters', { name, focus });
   if (ok) {
     await loadMyCharacters();
   }

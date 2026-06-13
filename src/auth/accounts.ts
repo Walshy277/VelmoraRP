@@ -2,14 +2,12 @@ import type { PoolClient } from 'pg';
 import { pool } from '../db/pool.js';
 import { beginTransaction, commitTransaction, rollbackTransaction } from '../db/transactions.js';
 import { hashPassword } from './passwords.js';
-import { startDayOneIfFirstPlayerAfterCreator } from '../world/dayOne.js';
 
 export interface RegisteredAccount {
   id: string;
   email: string;
   displayName: string;
   isCreator: boolean;
-  dayOneStarted: boolean;
 }
 
 export class DuplicateEmailError extends Error {
@@ -52,7 +50,6 @@ export async function registerAccount(input: {
     );
 
     const account = result.rows[0];
-    const dayOneStarted = await startDayOneIfFirstPlayerAfterCreator(client, account.id);
 
     await commitTransaction(client);
 
@@ -60,8 +57,7 @@ export async function registerAccount(input: {
       id: account.id,
       email: account.email,
       displayName: account.display_name,
-      isCreator: account.is_creator,
-      dayOneStarted
+      isCreator: account.is_creator
     };
   } catch (error) {
     await rollbackTransaction(client);
