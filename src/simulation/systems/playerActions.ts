@@ -23,10 +23,19 @@ const CRAFTING_RECIPES: Record<string, { requires: Record<string, number>; produ
 async function processGatherResource(
   client: PoolClient,
   actionId: string,
-  payload: Record<string, unknown>
+  payload: Record<string, unknown>,
+  tickNumber: number
 ): Promise<void> {
   let nodeId = payload.resourceNodeId as string | undefined;
   const characterId = payload.characterId as string | undefined;
+
+  if (!characterId) {
+    await client.query(
+      `UPDATE player_actions SET status = 'rejected', rejection_reason = 'No character', result = $2 WHERE id = $1`,
+      [actionId, buildResult({ error: 'no_character' })]
+    );
+    return;
+  }
 
   if (!nodeId && characterId) {
     const charRegion = await client.query(
@@ -71,14 +80,14 @@ async function processGatherResource(
 
   await client.query(`UPDATE resource_nodes SET quantity = quantity - $1 WHERE id = $2`, [gatherAmount, nodeId]);
 
-  const inventoryResult = await client.query(`SELECT id FROM inventories WHERE character_id = $1`, [characterId]);
+  const inventoryResult = await client.query(`SELECT id FROM inventories WHERE character_id = $1 FOR UPDATE`, [characterId]);
 
   if (inventoryResult.rows.length > 0) {
     const invId = inventoryResult.rows[0].id;
     await client.query(
       `UPDATE inventories SET items = jsonb_set(
         items,
-        CASE WHEN items ? $2 THEN ARRAY[$2] ELSE ARRAY[$2] END,
+        ARRAY[$2],
         CASE
           WHEN items ? $2 THEN to_jsonb((items->>$2)::int + $3)
           ELSE to_jsonb($3)
@@ -104,6 +113,7 @@ async function processGatherResource(
     {
       scope: 'character',
       eventType: 'resource_gathered',
+      tickNumber,
       characterId: characterId ?? undefined,
       regionId: node.region_id,
       summary: `Gathered ${gatherAmount} ${node.kind}.`,
@@ -113,7 +123,7 @@ async function processGatherResource(
   );
 }
 
-async function processCraftItem(client: PoolClient, actionId: string, payload: Record<string, unknown>): Promise<void> {
+async function processCraftItem(client: PoolClient, actionId: string, payload: Record<string, unknown>, tickNumber: number): Promise<void> {
   const recipe = payload.recipe as string | undefined;
   const characterId = payload.characterId as string | undefined;
 
@@ -142,7 +152,7 @@ async function processCraftItem(client: PoolClient, actionId: string, payload: R
     return;
   }
 
-  const invResult = await client.query(`SELECT id, items FROM inventories WHERE character_id = $1`, [characterId]);
+  const invResult = await client.query(`SELECT id, items FROM inventories WHERE character_id = $1 FOR UPDATE`, [characterId]);
 
   if (invResult.rows.length === 0) {
     await client.query(
@@ -180,7 +190,7 @@ async function processCraftItem(client: PoolClient, actionId: string, payload: R
   await client.query(
     `UPDATE inventories SET items = jsonb_set(
       items,
-      CASE WHEN items ? $2 THEN ARRAY[$2] ELSE ARRAY[$2] END,
+      ARRAY[$2],
       CASE
         WHEN items ? $2 THEN to_jsonb((items->>$2)::int + $3)
         ELSE to_jsonb($3)
@@ -199,6 +209,7 @@ async function processCraftItem(client: PoolClient, actionId: string, payload: R
     {
       scope: 'character',
       eventType: 'item_crafted',
+      tickNumber,
       characterId,
       summary: `Crafted ${recipeDef.amount}x ${recipeDef.produces}.`,
       payload: { recipe, produces: recipeDef.produces, amount: recipeDef.amount }
@@ -210,7 +221,8 @@ async function processCraftItem(client: PoolClient, actionId: string, payload: R
 async function processBuildStructure(
   client: PoolClient,
   actionId: string,
-  payload: Record<string, unknown>
+  payload: Record<string, unknown>,
+  tickNumber: number
 ): Promise<void> {
   const structureId = payload.structureId as string | undefined;
   const characterId = payload.characterId as string | undefined;
@@ -265,6 +277,7 @@ async function processBuildStructure(
       {
         scope: 'settlement',
         eventType: 'construction_completed',
+        tickNumber,
         characterId: characterId ?? undefined,
         summary: `A ${structure.kind} has been completed.`,
         payload: { structureId, kind: structure.kind }
@@ -274,7 +287,7 @@ async function processBuildStructure(
   }
 }
 
-async function processTravel(client: PoolClient, actionId: string, payload: Record<string, unknown>): Promise<void> {
+async function processTravel(client: PoolClient, actionId: string, payload: Record<string, unknown>, tickNumber: number): Promise<void> {
   const characterId = payload.characterId as string | undefined;
   const targetRegionId = payload.regionId as string | undefined;
 
@@ -314,6 +327,7 @@ async function processTravel(client: PoolClient, actionId: string, payload: Reco
     {
       scope: 'character',
       eventType: 'character_traveled',
+      tickNumber,
       characterId,
       regionId: targetRegionId,
       summary: `Traveled to ${regionResult.rows[0].name}.`,
@@ -323,7 +337,7 @@ async function processTravel(client: PoolClient, actionId: string, payload: Reco
   );
 }
 
-async function processTeach(client: PoolClient, actionId: string, payload: Record<string, unknown>): Promise<void> {
+async function processTeach(client: PoolClient, actionId: string, payload: Record<string, unknown>, tickNumber: number): Promise<void> {
   const teacherId = payload.characterId as string | undefined;
   const targetCharacterId = payload.targetCharacterId as string | undefined;
   const knowledgeName = payload.knowledge as string | undefined;
@@ -378,6 +392,7 @@ async function processTeach(client: PoolClient, actionId: string, payload: Recor
     {
       scope: 'character',
       eventType: 'knowledge_taught',
+      tickNumber,
       characterId: teacherId,
       summary: `Taught ${knowledgeName} to another character.`,
       payload: { knowledgeId, targetCharacterId }
@@ -386,7 +401,7 @@ async function processTeach(client: PoolClient, actionId: string, payload: Recor
   );
 }
 
-async function processFormGroup(client: PoolClient, actionId: string, payload: Record<string, unknown>): Promise<void> {
+async function processFormGroup(client: PoolClient, actionId: string, payload: Record<string, unknown>, tickNumber: number): Promise<void> {
   const groupName = payload.name as string | undefined;
   const founderId = payload.characterId as string | undefined;
 
@@ -422,6 +437,7 @@ async function processFormGroup(client: PoolClient, actionId: string, payload: R
     {
       scope: 'group',
       eventType: 'group_created',
+      tickNumber,
       characterId: founderId,
       summary: `${groupName} was formed.`,
       payload: { groupId: group.id }
@@ -430,7 +446,7 @@ async function processFormGroup(client: PoolClient, actionId: string, payload: R
   );
 }
 
-async function processHunt(client: PoolClient, actionId: string, payload: Record<string, unknown>): Promise<void> {
+async function processHunt(client: PoolClient, actionId: string, payload: Record<string, unknown>, tickNumber: number): Promise<void> {
   const characterId = payload.characterId as string | undefined;
 
   if (!characterId) {
@@ -452,14 +468,14 @@ async function processHunt(client: PoolClient, actionId: string, payload: Record
   const huntAmount = 2 + Math.floor(Math.random() * 4) + weaponBonus;
   const injuryRisk = Math.random();
 
-  const invResult = await client.query(`SELECT id FROM inventories WHERE character_id = $1`, [characterId]);
+  const invResult = await client.query(`SELECT id FROM inventories WHERE character_id = $1 FOR UPDATE`, [characterId]);
   const invId = invResult.rows[0]?.id;
 
   if (invId) {
     await client.query(
       `UPDATE inventories SET items = jsonb_set(
         items,
-        CASE WHEN items ? 'food' THEN ARRAY['food'] ELSE ARRAY['food'] END,
+        ARRAY['food'],
         CASE
           WHEN items ? 'food' THEN to_jsonb((items->>'food')::int + $2)
           ELSE to_jsonb($2)
@@ -495,6 +511,7 @@ async function processHunt(client: PoolClient, actionId: string, payload: Record
     {
       scope: 'character',
       eventType: 'hunt',
+      tickNumber,
       characterId,
       summary: `Hunted and gathered ${huntAmount} food${injury ? ', sustaining minor injuries.' : '.'}`,
       payload: { foodGathered: huntAmount, injured: injury }
@@ -503,7 +520,7 @@ async function processHunt(client: PoolClient, actionId: string, payload: Record
   );
 }
 
-async function processRest(client: PoolClient, actionId: string, payload: Record<string, unknown>): Promise<void> {
+async function processRest(client: PoolClient, actionId: string, payload: Record<string, unknown>, tickNumber: number): Promise<void> {
   const characterId = payload.characterId as string | undefined;
 
   if (!characterId) {
@@ -540,6 +557,7 @@ async function processRest(client: PoolClient, actionId: string, payload: Record
     {
       scope: 'character',
       eventType: 'rest',
+      tickNumber,
       characterId,
       summary: `Rested and recovered. Health is now ${newHealth}.`,
       payload: { health: newHealth, foodConsumed: consumedFood }
@@ -550,34 +568,35 @@ async function processRest(client: PoolClient, actionId: string, payload: Record
 
 async function processAction(
   client: PoolClient,
-  action: { id: string; actionType: string; payload: Record<string, unknown> }
+  action: { id: string; actionType: string; payload: Record<string, unknown> },
+  tickNumber: number
 ): Promise<void> {
   try {
     switch (action.actionType) {
       case 'gather_resource':
       case 'forage':
-        await processGatherResource(client, action.id, action.payload);
+        await processGatherResource(client, action.id, action.payload, tickNumber);
         break;
       case 'craft_item':
-        await processCraftItem(client, action.id, action.payload);
+        await processCraftItem(client, action.id, action.payload, tickNumber);
         break;
       case 'build_structure':
-        await processBuildStructure(client, action.id, action.payload);
+        await processBuildStructure(client, action.id, action.payload, tickNumber);
         break;
       case 'travel':
-        await processTravel(client, action.id, action.payload);
+        await processTravel(client, action.id, action.payload, tickNumber);
         break;
       case 'teach':
-        await processTeach(client, action.id, action.payload);
+        await processTeach(client, action.id, action.payload, tickNumber);
         break;
       case 'form_group':
-        await processFormGroup(client, action.id, action.payload);
+        await processFormGroup(client, action.id, action.payload, tickNumber);
         break;
       case 'hunt':
-        await processHunt(client, action.id, action.payload);
+        await processHunt(client, action.id, action.payload, tickNumber);
         break;
       case 'rest':
-        await processRest(client, action.id, action.payload);
+        await processRest(client, action.id, action.payload, tickNumber);
         break;
       default:
         await client.query(`UPDATE player_actions SET status = 'applied', result = $2 WHERE id = $1`, [
@@ -599,7 +618,7 @@ export const playerActionsSystem: SimulationSystem = {
     const actions = await claimQueuedActions(client, tickNumber);
 
     for (const action of actions) {
-      await processAction(client, { ...action, payload: action.payload ?? {} });
+      await processAction(client, { ...action, payload: action.payload ?? {} }, tickNumber);
     }
 
     return {

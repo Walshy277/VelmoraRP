@@ -2,6 +2,8 @@ import pg from 'pg';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { cleanConnectionString } from './pool.js';
+import { logger } from '../logger.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const MIGRATIONS_DIR = path.resolve(__dirname, '..', '..', 'database', 'migrations');
@@ -47,7 +49,7 @@ export async function runMigrations(databaseUrl?: string): Promise<void> {
   const raw = databaseUrl ?? process.env.DATABASE_URL;
   if (!raw) throw new Error('DATABASE_URL is required');
 
-  const url = raw.replace(/[?&]sslmode=[^&]+/g, '').replace(/[?&]$/, '');
+  const url = cleanConnectionString(raw);
   const isRemote = !url.includes('localhost') && !url.includes('127.0.0.1');
   const pool = new pg.Pool({
     connectionString: url,
@@ -65,24 +67,24 @@ export async function runMigrations(databaseUrl?: string): Promise<void> {
     const pending = getMigrationFiles().filter((m) => !appliedSet.has(m.version));
 
     if (pending.length === 0) {
-      console.log('No pending migrations.');
+      logger.info('No pending migrations.');
       await client.query('COMMIT');
       return;
     }
 
     for (const migration of pending) {
-      console.log(`Applying migration ${migration.name}...`);
+      logger.info(`Applying migration ${migration.name}...`);
       const sql = fs.readFileSync(migration.filepath, 'utf-8');
       await client.query(sql);
       await client.query('INSERT INTO schema_migrations (version, name) VALUES ($1, $2)', [
         migration.version,
         migration.name
       ]);
-      console.log(`Applied ${migration.name}`);
+      logger.info(`Applied ${migration.name}`);
     }
 
     await client.query('COMMIT');
-    console.log(`Applied ${pending.length} migration(s).`);
+    logger.info(`Applied ${pending.length} migration(s).`);
   } catch (error) {
     await client.query('ROLLBACK');
     throw error;
@@ -94,7 +96,7 @@ export async function runMigrations(databaseUrl?: string): Promise<void> {
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   runMigrations().catch((error) => {
-    console.error('Migration failed:', error);
+    logger.error({ error }, 'Migration failed');
     process.exit(1);
   });
 }

@@ -85,6 +85,7 @@ gameRouter.post('/characters', async (request: AuthenticatedRequest, response, n
     ]);
 
     if (existingCount.rows[0].count >= MAX_CHARACTERS_PER_ACCOUNT) {
+      await rollbackTransaction(client);
       response.status(400).json({ error: 'max_characters_reached', maxCharacters: MAX_CHARACTERS_PER_ACCOUNT });
       return;
     }
@@ -93,6 +94,7 @@ gameRouter.post('/characters', async (request: AuthenticatedRequest, response, n
     if (!regionId) {
       const regionResult = await client.query('SELECT id, name FROM regions ORDER BY created_at ASC LIMIT 1');
       if (regionResult.rows.length === 0) {
+        await rollbackTransaction(client);
         response.status(400).json({ error: 'no_regions_available' });
         return;
       }
@@ -201,6 +203,7 @@ gameRouter.post('/groups', async (request: AuthenticatedRequest, response, next)
     );
 
     if (charResult.rows.length === 0) {
+      await rollbackTransaction(client);
       response.status(400).json({ error: 'no_character' });
       return;
     }
@@ -254,11 +257,13 @@ gameRouter.post('/groups/:id/join', async (request: AuthenticatedRequest, respon
     const groupResult = await client.query('SELECT id, type, name, dissolved_at FROM groups WHERE id = $1', [id]);
 
     if (groupResult.rows.length === 0) {
+      await rollbackTransaction(client);
       response.status(404).json({ error: 'group_not_found' });
       return;
     }
 
     if (groupResult.rows[0].dissolved_at) {
+      await rollbackTransaction(client);
       response.status(400).json({ error: 'group_dissolved' });
       return;
     }
@@ -269,6 +274,7 @@ gameRouter.post('/groups/:id/join', async (request: AuthenticatedRequest, respon
     );
 
     if (charResult.rows.length === 0) {
+      await rollbackTransaction(client);
       response.status(400).json({ error: 'no_character' });
       return;
     }
@@ -281,6 +287,7 @@ gameRouter.post('/groups/:id/join', async (request: AuthenticatedRequest, respon
     );
 
     if (existingMembership.rows.length > 0) {
+      await rollbackTransaction(client);
       response.status(409).json({ error: 'already_member' });
       return;
     }

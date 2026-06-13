@@ -75,27 +75,4 @@ export async function requireCreator(
   }
 }
 
-export async function optionalAuth(
-  request: AuthenticatedRequest,
-  _response: Response,
-  next: NextFunction
-): Promise<void> {
-  const authHeader = request.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    next();
-    return;
-  }
 
-  const token = authHeader.slice(7);
-  try {
-    const result = await pool.query('SELECT account_id FROM sessions WHERE token = $1 AND expires_at > now()', [token]);
-
-    if (result.rows.length > 0) {
-      request.accountId = result.rows[0].account_id;
-    }
-  } catch {
-    // Silently continue without auth
-  }
-
-  next();
-}

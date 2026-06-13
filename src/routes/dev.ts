@@ -258,7 +258,7 @@ devRouter.post('/dev/spawn-items', requireCreator, async (request: CreatorReques
         await client.query(
           `UPDATE inventories SET items = jsonb_set(
             items,
-            CASE WHEN items ? $2 THEN ARRAY[$2] ELSE ARRAY[$2] END,
+            ARRAY[$2],
             CASE
               WHEN items ? $2 THEN to_jsonb((items->>$2)::int + $3)
               ELSE to_jsonb($3)
@@ -315,6 +315,8 @@ devRouter.post('/dev/modify-character', requireCreator, async (request: CreatorR
   const client = await pool.connect();
 
   try {
+    await beginTransaction(client);
+
     const updates: string[] = [];
     const values: unknown[] = [];
     let idx = 1;
@@ -345,6 +347,7 @@ devRouter.post('/dev/modify-character', requireCreator, async (request: CreatorR
     }
 
     if (updates.length === 0) {
+      await rollbackTransaction(client);
       response.status(400).json({ error: 'no_fields_to_update' });
       return;
     }
@@ -356,6 +359,7 @@ devRouter.post('/dev/modify-character', requireCreator, async (request: CreatorR
     );
 
     if (result.rows.length === 0) {
+      await rollbackTransaction(client);
       response.status(404).json({ error: 'character_not_found' });
       return;
     }
@@ -370,8 +374,11 @@ devRouter.post('/dev/modify-character', requireCreator, async (request: CreatorR
       client
     );
 
+    await commitTransaction(client);
+
     response.json({ character: result.rows[0] });
   } catch (error) {
+    await rollbackTransaction(client);
     next(error);
   } finally {
     client.release();
@@ -468,28 +475,39 @@ devRouter.post('/dev/set-creator', async (request, response, next) => {
     return;
   }
 
+  const client = await pool.connect();
+
   try {
-    const existingCreator = await pool.query(
-      `SELECT COUNT(*)::int AS count FROM accounts WHERE is_creator = true`
+    await beginTransaction(client);
+
+    const existingCreator = await client.query(
+      `SELECT id FROM accounts WHERE is_creator = true FOR UPDATE`
     );
 
-    if (existingCreator.rows[0].count > 0) {
+    if (existingCreator.rows.length > 0) {
+      await rollbackTransaction(client);
       response.status(400).json({ error: 'creator_already_exists' });
       return;
     }
 
-    const result = await pool.query(
+    const result = await client.query(
       `UPDATE accounts SET is_creator = true WHERE email = $1 RETURNING id, email, display_name, is_creator`,
       [parsed.data.email.toLowerCase()]
     );
 
     if (result.rows.length === 0) {
+      await rollbackTransaction(client);
       response.status(404).json({ error: 'account_not_found' });
       return;
     }
 
+    await commitTransaction(client);
+
     response.json({ account: result.rows[0], status: 'elevated_to_creator' });
   } catch (error) {
+    await rollbackTransaction(client);
     next(error);
+  } finally {
+    client.release();
   }
 });

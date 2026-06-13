@@ -1,3 +1,5 @@
+import { api } from './api.js';
+
 const clientState = { regions: [], events: [], apiOnline: false };
 
 export function getClientState() { return clientState; }
@@ -117,7 +119,6 @@ function renderAll() {
 }
 
 export async function loadWorldState() {
-  const { api } = await import('./api.js');
   try {
     const [reg, hist] = await Promise.all([
       api('GET', '/world/regions'),

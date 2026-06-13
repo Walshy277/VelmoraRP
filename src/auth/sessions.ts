@@ -52,8 +52,4 @@ export async function loginAccount(email: string, password: string): Promise<Ses
   }
 }
 
-export async function getAccountIdFromToken(token: string): Promise<string | null> {
-  const result = await pool.query('SELECT account_id FROM sessions WHERE token = $1 AND expires_at > now()', [token]);
 
-  return result.rows[0]?.account_id ?? null;
-}

@@ -1,7 +1,7 @@
 import pg from 'pg';
 import { config } from '../config.js';
 
-function cleanConnectionString(url: string): string {
+export function cleanConnectionString(url: string): string {
   return url.replace(/[?&]sslmode=[^&]+/g, '').replace(/[?&]$/, '');
 }
 

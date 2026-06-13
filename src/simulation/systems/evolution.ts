@@ -1,11 +1,11 @@
 import type { PoolClient } from 'pg';
 import type { SimulationSystem } from '../types.js';
 import { GROUP_EVOLUTION_ORDER } from '../../domain/society.js';
+import { config } from '../../config.js';
 
 interface EvolutionCandidate {
   groupId: string;
   currentType: string;
-  targetType: string;
   activeMembers: number;
   settlementCount: number;
   institutionCount: number;
@@ -94,7 +94,18 @@ const EVOLUTION_THRESHOLDS: Record<
 };
 
 async function findEvolutionCandidates(client: PoolClient): Promise<EvolutionCandidate[]> {
-  const result = await client.query<EvolutionCandidate>(
+  const result = await client.query<{
+    groupId: string;
+    currentType: string;
+    activeMembers: number;
+    settlementCount: number;
+    institutionCount: number;
+    knowledgeCount: number;
+    territoryRegions: number;
+    allianceCount: number;
+    governanceKeys: number;
+    foundedAt: Date;
+  }>(
     `
       SELECT
         g.id AS "groupId",
@@ -106,7 +117,7 @@ async function findEvolutionCandidates(client: PoolClient): Promise<EvolutionCan
         COALESCE(territory_stats.region_count, 0) AS "territoryRegions",
         COALESCE(alliance_stats.alliance_count, 0) AS "allianceCount",
         COALESCE((SELECT COUNT(*)::int FROM jsonb_object_keys(g.governance)), 0) AS "governanceKeys",
-        GREATEST(0, EXTRACT(EPOCH FROM (now() - g.founded_at)) / 5000)::int AS "ticksSinceFounded"
+        g.founded_at AS "foundedAt"
       FROM groups g
       LEFT JOIN LATERAL (
         SELECT active_member_count, institution_count
@@ -144,7 +155,21 @@ async function findEvolutionCandidates(client: PoolClient): Promise<EvolutionCan
     `
   );
 
-  return result.rows;
+  const tickMs = config.WORLD_TICK_MS;
+  const now = Date.now();
+
+  return result.rows.map((row) => ({
+    groupId: row.groupId,
+    currentType: row.currentType,
+    activeMembers: row.activeMembers,
+    settlementCount: row.settlementCount,
+    institutionCount: row.institutionCount,
+    knowledgeCount: row.knowledgeCount,
+    territoryRegions: row.territoryRegions,
+    allianceCount: row.allianceCount,
+    governanceKeys: row.governanceKeys,
+    ticksSinceFounded: Math.max(0, Math.floor((now - new Date(row.foundedAt).getTime()) / tickMs))
+  }));
 }
 
 function checkEligibility(candidate: EvolutionCandidate): { eligible: boolean; targetType?: string; reason?: string } {

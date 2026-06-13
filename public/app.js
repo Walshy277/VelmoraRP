@@ -1,8 +1,5 @@
-import './components/api.js';
-import './components/toast.js';
 import { saveSession, clearSession, loadMyCharacters, renderAuthUI, handleRegister, handleLogin, handleLogout, createCharacter, onAuthChange, getSessionAccount, getMyCharacters, getActiveCharacterId } from './components/auth.js';
-import { setRegions } from './components/map.js';
-import { startMap, resizeCanvas } from './components/map.js';
+import { setRegions, startMap, resizeCanvas } from './components/map.js';
 import { loadWorldState, getClientState } from './components/render.js';
 import { wireActionButtons } from './components/actions.js';
 import { toast } from './components/toast.js';
@@ -29,8 +26,8 @@ document.querySelector('#register-form')?.addEventListener('submit', async (e) =
 });
 
 document.querySelector('#login-submit')?.addEventListener('click', async () => {
-  const email = document.querySelector('#email').value;
-  const password = document.querySelector('#password').value;
+  const email = document.querySelector('#email')?.value;
+  const password = document.querySelector('#password')?.value;
   if (!email || !password) { toast('Enter email and password.', 'error'); return; }
   const status = document.querySelector('#auth-result');
   status.textContent = 'Logging in...';
@@ -42,9 +39,12 @@ document.querySelector('#login-submit')?.addEventListener('click', async () => {
   }
   toast(`Welcome, ${result.data.account.displayName}!`, 'success');
   status.textContent = 'Logged in.';
-  document.querySelector('#email').value = '';
-  document.querySelector('#password').value = '';
-  document.querySelector('#display-name').value = '';
+  const emailEl = document.querySelector('#email');
+  const passEl = document.querySelector('#password');
+  const nameEl = document.querySelector('#display-name');
+  if (emailEl) emailEl.value = '';
+  if (passEl) passEl.value = '';
+  if (nameEl) nameEl.value = '';
   await loadWorldState();
 });
 
@@ -56,19 +56,20 @@ document.querySelector('#logout-button')?.addEventListener('click', async () => 
 
 const charDialog = document.querySelector('#character-dialog');
 document.querySelector('#show-create-character')?.addEventListener('click', () => {
-  document.querySelector('#character-name').value = '';
-  charDialog.showModal();
+  const nameEl = document.querySelector('#character-name');
+  if (nameEl) nameEl.value = '';
+  if (charDialog) charDialog.showModal();
 });
-document.querySelector('#character-cancel')?.addEventListener('click', () => charDialog.close());
+document.querySelector('#character-cancel')?.addEventListener('click', () => { if (charDialog) charDialog.close(); });
 document.querySelector('#enter-world-button')?.addEventListener('click', async () => {
-  const name = document.querySelector('#character-name').value.trim();
+  const name = document.querySelector('#character-name')?.value?.trim();
   const focus = document.querySelector('#character-focus')?.value || 'survivor';
   if (!name) { toast('Enter a name for your character.', 'error'); return; }
   try {
     const result = await createCharacter(name, focus);
     if (result.ok) {
       toast(`Character ${result.data.character.name} created with ${focus} focus!`, 'success');
-      charDialog.close();
+      if (charDialog) charDialog.close();
     } else {
       toast(result.data?.error || 'Failed to create character', 'error');
     }
@@ -84,14 +85,14 @@ document.querySelector('#map-reset-button')?.addEventListener('click', () => {
 function navigateToView(hash) {
   const sections = document.querySelectorAll('.view-section');
   sections.forEach(s => s.style.display = 'none');
-  if (!hash || hash === 'home') return;
+  if (!hash || hash === 'home') {
+    const home = document.querySelector('#view-home');
+    if (home) home.style.display = '';
+    return;
+  }
   const target = document.querySelector(`#view-${hash}`);
   if (target) target.style.display = '';
 }
-
-window.addEventListener('hashchange', () => {
-  navigateToView(window.location.hash.replace('#', ''));
-});
 
 function makeCharCard(c) {
   const injuryWarning = c.injuries?.length > 0
@@ -164,7 +165,6 @@ async function loadCharacterView() {
     btn.addEventListener('click', () => {
       const id = btn.dataset.charId;
       const name = btn.dataset.charName;
-      document.querySelector('#active-character-id').value = id;
       localStorage.setItem('velmora_active_character', id);
       toast(`Active character set to ${name}`, 'info');
       loadCharacterView();
@@ -455,14 +455,6 @@ async function loadGovernView() {
   const groups = groupsRes.ok ? (groupsRes.data.groups || []) : [];
   const myChars = myCharsRes.ok ? (myCharsRes.data.characters || []) : [];
 
-  const myGroupIds = new Set();
-  if (myChars.length > 0) {
-    const membershipRes = await api('GET', '/world/groups');
-    if (membershipRes.ok) {
-      const allGroups = membershipRes.data.groups || [];
-    }
-  }
-
   container.innerHTML = '';
 
   if (groups.length === 0) {
@@ -538,6 +530,7 @@ const viewLoaders = {
 
 function handleRoute() {
   const hash = window.location.hash.replace('#', '');
+  navigateToView(hash);
   const loader = viewLoaders[hash];
   if (loader) loader();
 }
@@ -546,9 +539,9 @@ window.addEventListener('hashchange', handleRoute);
 
 document.querySelector('#chronicle-form')?.addEventListener('submit', async (e) => {
   e.preventDefault();
-  const title = document.querySelector('#chronicle-title').value.trim();
-  const body = document.querySelector('#chronicle-body').value.trim();
-  const scope = document.querySelector('#chronicle-scope').value;
+  const title = document.querySelector('#chronicle-title')?.value?.trim();
+  const body = document.querySelector('#chronicle-body')?.value?.trim();
+  const scope = document.querySelector('#chronicle-scope')?.value;
   if (!title || !body) { toast('Enter a title and body for your chronicle.', 'error'); return; }
   const { ok, data } = await api('POST', '/chronicles', { title, body, scope });
   if (ok) {
@@ -575,4 +568,3 @@ window.addEventListener('resize', resizeCanvas);
 startMap();
 
 handleRoute();
-navigateToView(window.location.hash.replace('#', ''));
