@@ -741,15 +741,50 @@ input {
     border: 1px solid var(--line-soft);
     padding: 12px;
   }
+
+  .hero-stats {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .compact-stats {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .inventory-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
 }
 
 @media (max-width: 720px) {
   .top-bar {
-    padding: 10px 12px;
+    padding: 8px 10px;
+    gap: 8px;
+  }
+
+  .brand-mark {
+    width: 34px;
+    height: 34px;
+    flex-shrink: 0;
+    box-shadow: 0 0 0 4px rgba(200, 157, 70, 0.08);
   }
 
   .brand strong {
-    font-size: 22px;
+    font-size: 20px;
+  }
+
+  .brand small {
+    font-size: 11px;
+  }
+
+  .primary-nav {
+    overflow-x: auto;
+    gap: 12px;
+    padding-bottom: 4px;
+  }
+
+  .primary-nav a {
+    white-space: nowrap;
+    font-size: 12px;
   }
 
   .era-clock {
@@ -758,27 +793,254 @@ input {
     min-width: 0;
   }
 
-  .game-shell {
-    padding: 10px;
+  .era-clock span {
+    font-size: 14px;
   }
 
-  .hero-panel,
-  .dashboard-grid,
-  .lower-grid,
-  .right-rail {
+  .game-shell {
     grid-template-columns: 1fr;
+    padding: 8px;
+    gap: 8px;
+  }
+
+  .left-rail {
+    border-right: 0;
+    padding-right: 0;
+    order: 2;
+  }
+
+  .content {
+    order: 1;
   }
 
   .hero-panel {
+    grid-template-columns: 1fr;
     justify-items: start;
+    gap: 10px;
+    padding: 12px;
+    min-height: auto;
+  }
+
+  .hero-panel h1 {
+    font-size: 18px;
+  }
+
+  .banner {
+    display: none;
   }
 
   .seal {
     display: none;
   }
 
+  .hero-stats {
+    grid-template-columns: repeat(3, 1fr);
+    width: 100%;
+  }
+
+  .dashboard-grid,
+  .lower-grid,
+  .right-rail {
+    grid-template-columns: 1fr;
+  }
+
+  .right-rail {
+    order: 3;
+  }
+
+  .location-overview h2 {
+    font-size: 22px;
+  }
+
   .action-grid {
     grid-template-columns: 1fr;
+  }
+
+  .action-button {
+    min-height: 52px;
+    padding: 8px 12px;
+  }
+
+  .right-rail .panel,
+  .left-rail .rail-section {
+    padding: 10px;
+  }
+
+  .modal {
+    margin: 10px;
+    min-width: 0;
+    width: calc(100% - 20px);
+    max-width: 400px;
+    padding: 16px;
+  }
+
+  .modal-footer {
+    flex-direction: column;
+  }
+
+  .modal-footer button {
+    width: 100%;
+  }
+
+  .view-section {
+    padding: 0;
+  }
+
+  .chronicle-list,
+  .relationship-list,
+  .territory-list,
+  .culture-groups,
+  .govern-groups,
+  .trade-groups {
+    gap: 4px;
+  }
+
+  .char-card {
+    font-size: 13px;
+  }
+
+  .char-card-body {
+    grid-template-columns: 1fr 1fr;
+    gap: 2px 8px;
+  }
+
+  .inventory-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .history-list li {
+    font-size: 12px;
+    padding: 6px 0;
+  }
+
+  .cp-dashboard {
+    padding: 8px;
+  }
+
+  .cp-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .cp-two-col {
+    grid-template-columns: 1fr;
+  }
+
+  .society-summary {
+    flex-wrap: wrap;
+  }
+
+  .society-summary span {
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .brand strong {
+    font-size: 17px;
+  }
+
+  .brand small {
+    display: none;
+  }
+
+  .brand-mark {
+    width: 28px;
+    height: 28px;
+  }
+
+  .top-bar {
+    min-height: 56px;
+    padding: 6px 8px;
+  }
+
+  .primary-nav {
+    gap: 8px;
+  }
+
+  .primary-nav a {
+    font-size: 11px;
+  }
+
+  .game-shell {
+    padding: 6px;
+    min-height: calc(100vh - 80px);
+  }
+
+  .hero-panel {
+    padding: 10px;
+  }
+
+  .hero-panel h1 {
+    font-size: 16px;
+  }
+
+  .hero-stats {
+    gap: 4px;
+  }
+
+  .hero-stats dd {
+    font-size: 14px;
+  }
+
+  .location-overview h2 {
+    font-size: 18px;
+  }
+
+  .panel {
+    padding: 10px;
+  }
+
+  .label {
+    font-size: 12px;
+  }
+
+  .dashboard-grid {
+    gap: 8px;
+  }
+
+  .action-grid {
+    gap: 6px;
+  }
+
+  .action-button span {
+    font-size: 14px;
+  }
+
+  .action-button small {
+    font-size: 11px;
+  }
+
+  .inventory-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 4px;
+  }
+
+  .char-card-body {
+    grid-template-columns: 1fr;
+  }
+
+  .char-stat-row {
+    font-size: 12px;
+  }
+
+  .settlement-scene {
+    height: 80px;
+  }
+
+  .cp-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .stat-card .value {
+    font-size: 22px;
+  }
+
+  .society-summary span {
+    font-size: 11px;
+  }
+
+  .modal {
+    padding: 12px;
   }
 }
 

@@ -1,12 +1,13 @@
 import { saveSession, clearSession, loadMyCharacters, renderAuthUI, handleRegister, handleLogin, handleLogout, createCharacter, onAuthChange, getSessionAccount, getMyCharacters, getActiveCharacterId } from './components/auth.js';
 import { setRegions, startMap, resizeCanvas } from './components/map.js';
-import { loadWorldState, getClientState } from './components/render.js';
+import { loadWorldState, getClientState, renderHeroPanel } from './components/render.js';
 import { wireActionButtons } from './components/actions.js';
 import { toast } from './components/toast.js';
 import { api } from './components/api.js';
 
 onAuthChange(() => {
   renderAuthUI();
+  renderHeroPanel();
 });
 
 document.querySelector('#register-form')?.addEventListener('submit', async (e) => {

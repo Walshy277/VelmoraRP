@@ -1,4 +1,5 @@
 import { api } from './api.js';
+import { getSessionAccount } from './auth.js';
 
 const clientState = { regions: [], events: [], apiOnline: false };
 
@@ -24,6 +25,25 @@ function makeListItem(primary, secondary) {
   detail.textContent = secondary;
   item.append(title, detail);
   return item;
+}
+
+export function renderHeroPanel() {
+  const account = getSessionAccount();
+  const headingEl = document.querySelector('#player-heading');
+  const summaryEl = document.querySelector('#player-summary');
+  const labelEl = document.querySelector('.hero-panel .label');
+
+  if (!headingEl) return;
+
+  if (account) {
+    if (labelEl) labelEl.textContent = 'Active Adventurer';
+    headingEl.textContent = account.displayName || 'The Creator';
+    if (summaryEl) summaryEl.textContent = 'You are shaping the history of Velmora. May your deeds be remembered.';
+  } else {
+    if (labelEl) labelEl.textContent = 'Foundation State';
+    headingEl.textContent = 'No Character Claimed';
+    if (summaryEl) summaryEl.textContent = 'Register an account to become part of the first playable generation.';
+  }
 }
 
 function renderDerivedWorldState() {
@@ -112,6 +132,7 @@ function renderActiveEvents() {
 }
 
 function renderAll() {
+  renderHeroPanel();
   renderDerivedWorldState();
   renderHistory();
   renderWorldNews();
