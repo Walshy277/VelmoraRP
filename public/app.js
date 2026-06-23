@@ -163,6 +163,24 @@ document.querySelector('#map-reset-button')?.addEventListener('click', () => {
   toast('Map centered.', 'info');
 });
 
+/* ---- Primary Nav ---- */
+document.querySelector('.primary-nav')?.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-view]');
+  if (!btn) return;
+  e.preventDefault();
+  const view = btn.dataset.view;
+  if (view === 'map') {
+    const canvas = document.querySelector('#world-canvas');
+    if (canvas) canvas.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    document.querySelectorAll('.view-section').forEach(s => s.style.display = 'none');
+    const home = document.querySelector('#view-home');
+    if (home) home.style.display = '';
+    window.location.hash = '';
+    return;
+  }
+  window.location.hash = view;
+});
+
 /* ---- Navigation ---- */
 function navigateToView(hash) {
   const sections = document.querySelectorAll('.view-section');

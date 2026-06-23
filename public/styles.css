@@ -65,6 +65,10 @@ button {
   backdrop-filter: blur(12px);
 }
 
+.bottom-bar {
+  bottom: 0;
+}
+
 .top-bar {
   top: 0;
   min-height: 76px;
@@ -118,11 +122,17 @@ button {
 }
 
 .primary-nav a,
+.primary-nav button,
 .bottom-bar button {
   color: var(--gold-soft);
   font-size: 14px;
   text-decoration: none;
   text-transform: uppercase;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  padding: 4px 8px;
+  touch-action: manipulation;
 }
 
 .bottom-bar button {
@@ -275,7 +285,8 @@ button {
   }
 
   .bottom-bar {
-    padding-bottom: 70px;
+    padding-bottom: 10px;
+    bottom: 56px;
   }
 
   .rail-link,
@@ -324,6 +335,10 @@ button {
 
   .bottom-nav-label {
     font-size: 9px;
+  }
+
+  .bottom-bar {
+    bottom: 52px;
   }
 }
 
@@ -1002,7 +1017,7 @@ input {
   }
 
   .right-rail {
-    order: 3;
+    order: -1;
   }
 
   .rail-section {
@@ -1050,7 +1065,8 @@ input {
     padding-bottom: 4px;
   }
 
-  .primary-nav a {
+  .primary-nav a,
+  .primary-nav button {
     white-space: nowrap;
     font-size: 12px;
   }
@@ -1225,7 +1241,8 @@ input {
     gap: 8px;
   }
 
-  .primary-nav a {
+  .primary-nav a,
+  .primary-nav button {
     font-size: 11px;
   }
 
