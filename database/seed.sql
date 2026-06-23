@@ -2,7 +2,13 @@ INSERT INTO knowledge_entries (name, category, description, requirements)
 VALUES
   ('Basic Foraging', 'survival', 'Identify safe edible plants and basic water sources.', '{}'),
   ('Stone Toolmaking', 'crafting', 'Shape stone and wood into simple survival tools.', '{"resources":["stone","wood"]}'),
-  ('Simple Shelter', 'construction', 'Build basic huts and weather protection.', '{"resources":["wood","fiber"]}')
+  ('Simple Shelter', 'construction', 'Build basic huts and weather protection.', '{"resources":["wood","fiber"]}'),
+  ('Fire Starting', 'survival', 'Create and maintain fire for warmth and cooking.', '{"resources":["wood","stone"]}'),
+  ('Tracking', 'survival', 'Follow animal signs and read the land for hunting.', '{}'),
+  ('Knot Tying', 'crafting', 'Secure bindings for tools, shelters, and carry loads.', '{"resources":["fiber"]}'),
+  ('Hide Tanning', 'survival', 'Process animal hides into durable leather.', '{}'),
+  ('Herbal Remedy', 'medicine', 'Identify plants with mild healing properties.', '{}'),
+  ('Bone Tools', 'crafting', 'Shape bone into fishing hooks, needles, and awls.', '{}')
 ON CONFLICT (name) DO NOTHING;
 
 INSERT INTO regions (name, shard_key, terrain, climate)

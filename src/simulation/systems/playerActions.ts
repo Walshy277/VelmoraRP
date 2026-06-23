@@ -7,6 +7,36 @@ function buildResult(result: Record<string, unknown>): string {
   return JSON.stringify(result);
 }
 
+async function deductVigor(client: PoolClient, characterId: string, amount: number): Promise<boolean> {
+  const result = await client.query(
+    `UPDATE characters SET vigor = GREATEST(0, vigor - $1) WHERE id = $2 AND vigor >= $1 RETURNING id`,
+    [amount, characterId]
+  );
+  return result.rowCount !== null && result.rowCount > 0;
+}
+
+async function deductFocus(client: PoolClient, characterId: string, amount: number): Promise<boolean> {
+  const result = await client.query(
+    `UPDATE characters SET focus = GREATEST(0, focus - $1) WHERE id = $2 AND focus >= $1 RETURNING id`,
+    [amount, characterId]
+  );
+  return result.rowCount !== null && result.rowCount > 0;
+}
+
+async function grantStatXp(client: PoolClient, characterId: string, stat: string, amount: number): Promise<void> {
+  await client.query(
+    `UPDATE characters SET ${stat} = ${stat} + $1 WHERE id = $2`,
+    [amount, characterId]
+  );
+}
+
+async function boostMorale(client: PoolClient, characterId: string, amount: number): Promise<void> {
+  await client.query(
+    `UPDATE characters SET morale = LEAST(max_morale, morale + $1) WHERE id = $2`,
+    [amount, characterId]
+  );
+}
+
 const CRAFTING_RECIPES: Record<string, { requires: Record<string, number>; produces: string; amount: number }> = {
   stone_axe: { requires: { stone: 3, wood: 2 }, produces: 'stone_axe', amount: 1 },
   stone_knife: { requires: { stone: 2, wood: 1 }, produces: 'stone_knife', amount: 1 },
@@ -75,6 +105,14 @@ async function processGatherResource(
     return;
   }
 
+  if (!(await deductVigor(client, characterId, 10))) {
+    await client.query(
+      `UPDATE player_actions SET status = 'rejected', rejection_reason = 'Not enough vigor', result = $2 WHERE id = $1`,
+      [actionId, buildResult({ error: 'low_vigor' })]
+    );
+    return;
+  }
+
   const node = nodeResult.rows[0];
   const gatherAmount = Math.min(node.quantity, 3 + Math.floor(Math.random() * 3));
 
@@ -103,6 +141,9 @@ async function processGatherResource(
       [characterId, node.kind, gatherAmount]
     );
   }
+
+  await grantStatXp(client, characterId, 'dexterity', 1);
+  await boostMorale(client, characterId, 1);
 
   await client.query(`UPDATE player_actions SET status = 'applied', result = $2 WHERE id = $1`, [
     actionId,
@@ -148,6 +189,14 @@ async function processCraftItem(client: PoolClient, actionId: string, payload: R
     await client.query(
       `UPDATE player_actions SET status = 'rejected', rejection_reason = 'No character', result = $2 WHERE id = $1`,
       [actionId, buildResult({ error: 'no_character' })]
+    );
+    return;
+  }
+
+  if (!(await deductFocus(client, characterId, 8))) {
+    await client.query(
+      `UPDATE player_actions SET status = 'rejected', rejection_reason = 'Not enough focus', result = $2 WHERE id = $1`,
+      [actionId, buildResult({ error: 'low_focus' })]
     );
     return;
   }
@@ -200,6 +249,9 @@ async function processCraftItem(client: PoolClient, actionId: string, payload: R
     [inv.id, recipeDef.produces, recipeDef.amount]
   );
 
+  await grantStatXp(client, characterId, 'intellect', 2);
+  await boostMorale(client, characterId, 2);
+
   await client.query(`UPDATE player_actions SET status = 'applied', result = $2 WHERE id = $1`, [
     actionId,
     buildResult({ crafted: recipeDef.produces, amount: recipeDef.amount })
@@ -226,6 +278,22 @@ async function processBuildStructure(
 ): Promise<void> {
   const structureId = payload.structureId as string | undefined;
   const characterId = payload.characterId as string | undefined;
+
+  if (!characterId) {
+    await client.query(
+      `UPDATE player_actions SET status = 'rejected', rejection_reason = 'No character', result = $2 WHERE id = $1`,
+      [actionId, buildResult({ error: 'no_character' })]
+    );
+    return;
+  }
+
+  if (!(await deductVigor(client, characterId, 15))) {
+    await client.query(
+      `UPDATE player_actions SET status = 'rejected', rejection_reason = 'Not enough vigor', result = $2 WHERE id = $1`,
+      [actionId, buildResult({ error: 'low_vigor' })]
+    );
+    return;
+  }
 
   if (!structureId) {
     await client.query(
@@ -267,6 +335,9 @@ async function processBuildStructure(
 
   const completed = newProgress >= 100;
 
+  await grantStatXp(client, characterId, 'fortitude', 2);
+  await boostMorale(client, characterId, completed ? 5 : 1);
+
   await client.query(`UPDATE player_actions SET status = 'applied', result = $2 WHERE id = $1`, [
     actionId,
     buildResult({ progress: newProgress, completed })
@@ -299,6 +370,14 @@ async function processTravel(client: PoolClient, actionId: string, payload: Reco
     return;
   }
 
+  if (!(await deductVigor(client, characterId, 20))) {
+    await client.query(
+      `UPDATE player_actions SET status = 'rejected', rejection_reason = 'Not enough vigor', result = $2 WHERE id = $1`,
+      [actionId, buildResult({ error: 'low_vigor' })]
+    );
+    return;
+  }
+
   const regionResult = await client.query('SELECT id, name FROM regions WHERE id = $1', [targetRegionId]);
   if (regionResult.rows.length === 0) {
     await client.query(
@@ -317,6 +396,9 @@ async function processTravel(client: PoolClient, actionId: string, payload: Reco
     newY,
     characterId
   ]);
+
+  await grantStatXp(client, characterId, 'fortitude', 1);
+  await boostMorale(client, characterId, 1);
 
   await client.query(`UPDATE player_actions SET status = 'applied', result = $2 WHERE id = $1`, [
     actionId,
@@ -457,6 +539,14 @@ async function processHunt(client: PoolClient, actionId: string, payload: Record
     return;
   }
 
+  if (!(await deductVigor(client, characterId, 15))) {
+    await client.query(
+      `UPDATE player_actions SET status = 'rejected', rejection_reason = 'Not enough vigor', result = $2 WHERE id = $1`,
+      [actionId, buildResult({ error: 'low_vigor' })]
+    );
+    return;
+  }
+
   const hasWeapon = await client.query(
     `SELECT 1 FROM inventories
      WHERE character_id = $1
@@ -502,6 +592,9 @@ async function processHunt(client: PoolClient, actionId: string, payload: Record
     injury = true;
   }
 
+  await grantStatXp(client, characterId, 'might', 2);
+  await boostMorale(client, characterId, 3);
+
   await client.query(`UPDATE player_actions SET status = 'applied', result = $2 WHERE id = $1`, [
     actionId,
     buildResult({ foodGathered: huntAmount, injured: injury, weaponBonus })
@@ -532,7 +625,12 @@ async function processRest(client: PoolClient, actionId: string, payload: Record
   }
 
   const healthResult = await client.query(
-    `UPDATE characters SET health = LEAST(100, health + 15) WHERE id = $1 RETURNING health`,
+    `UPDATE characters SET
+      health = LEAST(100, health + 15),
+      vigor = LEAST(max_vigor, vigor + 25),
+      focus = LEAST(max_focus, focus + 15),
+      morale = LEAST(max_morale, morale + 10)
+     WHERE id = $1 RETURNING health, vigor, focus, morale`,
     [characterId]
   );
 
@@ -545,12 +643,19 @@ async function processRest(client: PoolClient, actionId: string, payload: Record
     [characterId]
   );
 
-  const newHealth = healthResult.rows[0]?.health ?? 100;
+  const updated = healthResult.rows[0];
   const consumedFood = foodResult.rowCount ?? 0;
+
+  if (consumedFood > 0) {
+    await client.query(
+      `UPDATE characters SET saturation = LEAST(max_saturation, saturation + 15) WHERE id = $1`,
+      [characterId]
+    );
+  }
 
   await client.query(`UPDATE player_actions SET status = 'applied', result = $2 WHERE id = $1`, [
     actionId,
-    buildResult({ health: newHealth, foodConsumed: consumedFood })
+    buildResult({ health: updated.health, vigor: updated.vigor, focus: updated.focus, morale: updated.morale, foodConsumed: consumedFood })
   ]);
 
   await recordHistoricalEvent(
@@ -559,8 +664,8 @@ async function processRest(client: PoolClient, actionId: string, payload: Record
       eventType: 'rest',
       tickNumber,
       characterId,
-      summary: `Rested and recovered. Health is now ${newHealth}.`,
-      payload: { health: newHealth, foodConsumed: consumedFood }
+      summary: `Rested and recovered. Health is now ${updated.health}.`,
+      payload: { health: updated.health, vigor: updated.vigor, focus: updated.focus, morale: updated.morale, foodConsumed: consumedFood }
     },
     client
   );

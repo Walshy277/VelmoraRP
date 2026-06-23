@@ -2,6 +2,35 @@ import { getSessionToken, getMyCharacters, getActiveCharacterId, submitAction } 
 import { api } from './api.js';
 import { toast } from './toast.js';
 
+let pendingActionCount = 0;
+
+export function getPendingActionCount() { return pendingActionCount; }
+
+function updatePendingUI() {
+  const el = document.querySelector('#pending-actions-count');
+  if (!el) return;
+  if (pendingActionCount > 0) {
+    el.style.display = 'flex';
+    el.innerHTML = `<span class="pending-spinner"></span> ${pendingActionCount} action${pendingActionCount > 1 ? 's' : ''} pending — results appear after next tick`;
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+function setButtonLoading(btn, loading) {
+  if (!btn) return;
+  if (loading) {
+    btn.disabled = true;
+    btn.dataset.originalText = btn.innerHTML;
+    btn.innerHTML = '<span class="spinner" style="width:16px;height:16px;margin:0 auto"></span>';
+  } else {
+    btn.disabled = false;
+    if (btn.dataset.originalText) {
+      btn.innerHTML = btn.dataset.originalText;
+    }
+  }
+}
+
 function requireAuth() {
   if (!getSessionToken()) { toast('Log in first.', 'error'); return false; }
   if (!getActiveCharacterId() && getMyCharacters().length === 0) { toast('Create a character first.', 'error'); return false; }
@@ -18,7 +47,9 @@ function wireDialog(dialogId, submitId, cancelId, onSubmit) {
   const cancel = document.querySelector(cancelId);
   if (!dialog || !submit || !cancel) return;
   submit.addEventListener('click', async () => {
+    setButtonLoading(submit, true);
     const result = await onSubmit(dialog);
+    setButtonLoading(submit, false);
     if (result) dialog.close();
   });
   cancel.addEventListener('click', () => dialog.close());
@@ -92,7 +123,7 @@ export function wireActionButtons() {
     const recipe = document.querySelector('#craft-recipe').value;
     if (!recipe) { toast('Select a recipe.', 'error'); return false; }
     const result = await submitAction('craft_item', { recipe, characterId: getActiveCharacterId() });
-    if (result.ok) { toast(`Crafting ${recipe} queued!`, 'success'); return true; }
+    if (result.ok) { toast(`Crafting ${recipe} queued!`, 'success'); pendingActionCount++; updatePendingUI(); return true; }
     toast(result.data?.error || 'Crafting failed', 'error');
     return false;
   });
@@ -103,7 +134,7 @@ export function wireActionButtons() {
     const targetCharacterId = document.querySelector('#teach-target').value.trim();
     if (!knowledge || !targetCharacterId) { toast('Enter knowledge name and target character ID.', 'error'); return false; }
     const result = await submitAction('teach', { knowledge, targetCharacterId, characterId: getActiveCharacterId() });
-    if (result.ok) { toast(`Teaching ${knowledge} queued!`, 'success'); return true; }
+    if (result.ok) { toast(`Teaching ${knowledge} queued!`, 'success'); pendingActionCount++; updatePendingUI(); return true; }
     toast(result.data?.error || 'Teaching failed', 'error');
     return false;
   });
@@ -148,32 +179,36 @@ export function wireActionButtons() {
         const mapped = actionMap[a];
         if (mapped) {
           if (!requireAuth()) return;
+          setButtonLoading(btn, true);
 
           if (mapped.type === 'travel') {
             const regionsRes = await api('GET', '/world/regions');
-            if (!regionsRes.ok) { toast('Could not load regions.', 'error'); return; }
+            if (!regionsRes.ok) { setButtonLoading(btn, false); toast('Could not load regions.', 'error'); return; }
             const regions = regionsRes.data.regions || [];
-            if (regions.length <= 1) { toast('Only one region available.', 'info'); return; }
+            if (regions.length <= 1) { setButtonLoading(btn, false); toast('Only one region available.', 'info'); return; }
             const char = await findFirstCharacter();
-            if (!char) { toast('No character.', 'error'); return; }
+            if (!char) { setButtonLoading(btn, false); toast('No character.', 'error'); return; }
             const otherRegions = regions.filter(r => r.id !== char.region_id);
-            if (otherRegions.length === 0) { toast('No other regions to travel to.', 'info'); return; }
+            if (otherRegions.length === 0) { setButtonLoading(btn, false); toast('No other regions to travel to.', 'info'); return; }
             const target = otherRegions[0];
             const result = await submitAction('travel', { regionId: target.id });
-            if (result.ok) { toast(`Traveling to ${target.name}!`, 'success'); }
+            setButtonLoading(btn, false);
+            if (result.ok) { toast(`Traveling to ${target.name}!`, 'success'); pendingActionCount++; updatePendingUI(); }
             else { toast(result.data?.error || 'Travel failed', 'error'); }
           } else if (mapped.type === 'gather_resource') {
             const char = await findFirstCharacter();
-            if (!char) { toast('No character.', 'error'); return; }
-            const resourceRes = await api('GET', '/world/regions');
-            if (!resourceRes.ok) { toast('Could not load resources.', 'error'); return; }
+            if (!char) { setButtonLoading(btn, false); toast('No character.', 'error'); return; }
             const result = await submitAction('gather_resource', { characterId: getActiveCharacterId() });
-            if (result.ok) { toast('Foraging queued!', 'success'); }
+            setButtonLoading(btn, false);
+            if (result.ok) { toast('Foraging queued!', 'success'); pendingActionCount++; updatePendingUI(); }
             else { toast(result.data?.error || 'Foraging failed', 'error'); }
           } else {
             const result = await submitAction(mapped.type);
+            setButtonLoading(btn, false);
             if (result.ok) {
               toast(`Action queued: ${mapped.type}`, 'success');
+              pendingActionCount++;
+              updatePendingUI();
             } else {
               toast(result.data?.error || result.error || 'Action failed', 'error');
             }
@@ -184,4 +219,9 @@ export function wireActionButtons() {
       }
     });
   });
+}
+
+export function resetPendingCount() {
+  pendingActionCount = 0;
+  updatePendingUI();
 }

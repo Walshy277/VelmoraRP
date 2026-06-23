@@ -2,7 +2,13 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#11100c" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="description" content="Persistent browser-based roleplay. Forge your legend from nothing." />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
     <title>VelmoraRP</title>
     <link rel="stylesheet" href="/styles.css" />
   </head>
@@ -12,7 +18,7 @@
         <span class="brand-mark" aria-hidden="true"></span>
         <span>
           <strong>Velmora RP</strong>
-          <small>Write history. Build civilizations.</small>
+          <small>Forge your legend from nothing.</small>
         </span>
       </a>
       <nav class="primary-nav" aria-label="Primary">
@@ -26,6 +32,33 @@
         <strong id="game-day">Tick-based simulation</strong>
       </div>
     </header>
+
+    <nav class="bottom-nav" aria-label="Mobile navigation">
+      <button class="bottom-nav-item active" data-view="home" type="button">
+        <span class="bottom-nav-icon">H</span>
+        <span class="bottom-nav-label">Home</span>
+      </button>
+      <button class="bottom-nav-item" data-view="character" type="button">
+        <span class="bottom-nav-icon">C</span>
+        <span class="bottom-nav-label">Character</span>
+      </button>
+      <button class="bottom-nav-item" data-view="family" type="button">
+        <span class="bottom-nav-icon">F</span>
+        <span class="bottom-nav-label">Family</span>
+      </button>
+      <button class="bottom-nav-item" data-view="society" type="button">
+        <span class="bottom-nav-icon">S</span>
+        <span class="bottom-nav-label">Society</span>
+      </button>
+      <button class="bottom-nav-item" data-view="map" type="button">
+        <span class="bottom-nav-icon">M</span>
+        <span class="bottom-nav-label">Map</span>
+      </button>
+      <button class="bottom-nav-item" data-view="chronicle" type="button">
+        <span class="bottom-nav-icon">W</span>
+        <span class="bottom-nav-label">Chronicle</span>
+      </button>
+    </nav>
 
     <main class="game-shell">
       <aside class="left-rail" aria-label="Navigation and location">
@@ -61,8 +94,8 @@
         <section class="rail-section">
           <p class="label">Quick Links</p>
           <a class="rail-link" href="#world-map">World Map</a>
-          <a class="rail-link" href="#knowledge">Technology Tree</a>
-          <button class="rail-link" data-action="culture" type="button">Culture Encyclopedia</button>
+          <a class="rail-link" href="#learn">Knowledge</a>
+          <button class="rail-link" data-action="culture" type="button">History</button>
           <a class="rail-link" href="#events">Active Events</a>
         </section>
       </aside>
@@ -71,102 +104,78 @@
         <section class="parchment hero-panel" aria-label="Player overview">
           <div class="banner" aria-hidden="true"><span></span></div>
           <div>
-            <p class="label">Foundation State</p>
+            <p class="label">Active Adventurer</p>
             <h1 id="player-heading">No Character Claimed</h1>
-            <p id="player-summary">Register an account to become part of the first playable generation.</p>
+            <p id="player-summary">Register an account to begin your legend.</p>
           </div>
-          <dl class="hero-stats">
-            <div>
-              <dt>Reputation</dt>
-              <dd id="reputation-stat">Unwritten</dd>
+          <div id="resource-bars" class="resource-bars" style="display:none">
+            <div class="resource-row">
+              <span class="resource-label">Vigor</span>
+              <div class="res-bar"><div id="vigor-fill" class="res-fill vigor-fill"></div></div>
+              <span id="vigor-text" class="res-text">0/0</span>
             </div>
-            <div>
-              <dt>Influence</dt>
-              <dd id="influence-stat">0</dd>
+            <div class="resource-row">
+              <span class="resource-label">Focus</span>
+              <div class="res-bar"><div id="focus-fill" class="res-fill focus-fill"></div></div>
+              <span id="focus-text" class="res-text">0/0</span>
             </div>
-            <div>
-              <dt>Learning</dt>
-              <dd id="learning-stat">Oral</dd>
+            <div class="resource-row">
+              <span class="resource-label">Morale</span>
+              <div class="res-bar"><div id="morale-fill" class="res-fill morale-fill"></div></div>
+              <span id="morale-text" class="res-text">0/0</span>
             </div>
-          </dl>
+            <div class="resource-row">
+              <span class="resource-label">Saturation</span>
+              <div class="res-bar"><div id="saturation-fill" class="res-fill saturation-fill"></div></div>
+              <span id="saturation-text" class="res-text">0/0</span>
+            </div>
+          </div>
+          <div id="stat-bars" class="stat-bars" style="display:none">
+            <div class="stat-row"><span class="stat-label">Might</span><span id="might-stat" class="stat-value">1</span></div>
+            <div class="stat-row"><span class="stat-label">Fortitude</span><span id="fortitude-stat" class="stat-value">1</span></div>
+            <div class="stat-row"><span class="stat-label">Dexterity</span><span id="dexterity-stat" class="stat-value">1</span></div>
+            <div class="stat-row"><span class="stat-label">Intellect</span><span id="intellect-stat" class="stat-value">1</span></div>
+            <div class="stat-row"><span class="stat-label">Cunning</span><span id="cunning-stat" class="stat-value">1</span></div>
+            <div class="stat-row"><span class="stat-label">Presence</span><span id="presence-stat" class="stat-value">1</span></div>
+          </div>
           <div class="seal" aria-hidden="true"></div>
         </section>
 
         <section class="dashboard-grid">
-          <article class="panel location-overview">
-            <p class="label">Settlement</p>
-            <h2 id="settlement-name">First Camp Site</h2>
-            <p class="subtle" id="settlement-summary">
-              No city exists yet. Shelter, storage, and shared knowledge must come first.
-            </p>
-            <div class="settlement-scene" aria-hidden="true">
-              <span class="sun"></span>
-              <span class="ridge ridge-a"></span>
-              <span class="ridge ridge-b"></span>
-              <span class="city-shape"></span>
-            </div>
-            <dl class="compact-stats">
-              <div>
-                <dt>Population</dt>
-                <dd id="population-stat">0 registered</dd>
-              </div>
-              <div>
-                <dt>Culture</dt>
-                <dd id="culture-stat">Unformed</dd>
-              </div>
-              <div>
-                <dt>Religion</dt>
-                <dd id="religion-stat">No shared rites</dd>
-              </div>
-              <div>
-                <dt>Government</dt>
-                <dd id="government-stat">None</dd>
-              </div>
-              <div>
-                <dt>Prosperity</dt>
-                <dd id="prosperity-stat">Subsistence</dd>
-              </div>
-              <div>
-                <dt>Security</dt>
-                <dd id="security-stat">Unknown</dd>
-              </div>
-            </dl>
-          </article>
-
           <article class="panel actions-panel">
             <p class="label">Available Actions</p>
             <div class="action-grid">
-              <button id="explore-button" class="action-button" data-action="travel" type="button">
-                <span>Travel</span>
-                <small>Move to a new region</small>
-              </button>
               <button id="forage-button" class="action-button" data-action="forage" type="button">
                 <span>Forage</span>
-                <small>Gather food and fiber</small>
-              </button>
-              <button id="camp-button" class="action-button" data-action="camp" type="button">
-                <span>Camp</span>
-                <small>Create shelter and safety</small>
+                <small>Gather food and fiber (10 vigor)</small>
               </button>
               <button class="action-button" data-action="hunt" type="button">
                 <span>Hunt</span>
-                <small>Risk injury for food</small>
+                <small>Risk injury for food (15 vigor)</small>
               </button>
               <button class="action-button" data-action="rest" type="button">
                 <span>Rest</span>
-                <small>Recover health (costs food)</small>
+                <small>Recover resources (costs food)</small>
+              </button>
+              <button class="action-button" data-action="craft" type="button">
+                <span>Craft</span>
+                <small>Create tools and goods (8 focus)</small>
+              </button>
+              <button id="explore-button" class="action-button" data-action="travel" type="button">
+                <span>Travel</span>
+                <small>Move to a new region (20 vigor)</small>
+              </button>
+              <button id="camp-button" class="action-button" data-action="camp" type="button">
+                <span>Camp</span>
+                <small>Build shelter (15 vigor)</small>
               </button>
               <button class="action-button" data-action="teach" type="button">
                 <span>Teach</span>
                 <small>Transmit knowledge</small>
               </button>
-              <button class="action-button" data-action="craft" type="button">
-                <span>Craft</span>
-                <small>Create tools and goods</small>
-              </button>
               <button class="action-button" data-action="trade" type="button">
                 <span>Trade</span>
-                <small>Barter with nearby groups</small>
+                <small>Barter with others</small>
               </button>
               <button class="action-button" data-action="form-group" type="button">
                 <span>Form Group</span>
@@ -179,12 +188,38 @@
             </div>
             <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
               <button class="secondary-button" data-action="place-structure" type="button">Place Structure</button>
-              <button class="secondary-button" data-action="govern" type="button">Govern</button>
               <button class="secondary-button" data-action="chronicle" type="button">Write Chronicle</button>
             </div>
             <p id="action-result" class="status-text">
-              Actions update the local prototype state until queued world actions are wired to the API.
+              Queue actions to grow stronger. Results appear after each world tick.
             </p>
+            <p id="pending-actions-count" class="status-text" style="display:none"></p>
+          </article>
+
+          <article class="panel location-overview">
+            <p class="label">Current Location</p>
+            <h2 id="current-location-name">Unclaimed Starting Region</h2>
+            <p class="subtle" id="current-location-detail">
+              A fertile river basin awaiting your first steps.
+            </p>
+            <dl class="compact-stats">
+              <div>
+                <dt>Health</dt>
+                <dd id="health-stat">100</dd>
+              </div>
+              <div>
+                <dt>Hunger</dt>
+                <dd id="hunger-stat">Sated</dd>
+              </div>
+              <div>
+                <dt>Status</dt>
+                <dd id="character-status">Active</dd>
+              </div>
+              <div>
+                <dt>Age</dt>
+                <dd id="age-stat">0 days</dd>
+              </div>
+            </dl>
           </article>
 
           <article class="panel world-map-card" id="world-map">
@@ -206,55 +241,18 @@
             <ol id="history-list" class="history-list"></ol>
           </article>
 
-          <article class="panel">
-            <p class="label">Core Loops</p>
-            <div class="loop-list">
-              <div>
-                <strong>Survive</strong>
-                <span>Gather, forage, build shelter, manage immediate threats.</span>
-              </div>
-              <div>
-                <strong>Settle</strong>
-                <span>Form groups, specialize roles, construct infrastructure.</span>
-              </div>
-              <div>
-                <strong>Civilize</strong>
-                <span>Teach knowledge, govern territory, preserve institutions.</span>
-              </div>
+          <article class="panel" id="inventory-panel">
+            <p class="label">Inventory</p>
+            <div id="inventory-contents">
+              <p class="status-text">Log in to see your inventory.</p>
             </div>
           </article>
 
-          <article class="panel" id="knowledge">
-            <p class="label">Knowledge Discoveries</p>
-            <ul class="discovery-list">
-              <li><strong>Basic Foraging</strong><span>Known through oral teaching</span></li>
-              <li><strong>Stone Toolmaking</strong><span>Requires stone and wood</span></li>
-              <li><strong>Simple Shelter</strong><span>Shared by builders</span></li>
-              <li><strong>Calendar</strong><span>Time tracking not yet invented</span></li>
-              <li><strong>Writing</strong><span>Locked until a society preserves symbols</span></li>
-            </ul>
-          </article>
-
-          <article class="panel" id="society">
-            <p class="label">Society Pulse</p>
-            <dl class="compact-stats">
-              <div>
-                <dt>Status</dt>
-                <dd id="calendar-status">Checking world...</dd>
-              </div>
-              <div>
-                <dt>Regions</dt>
-                <dd id="region-count">Unknown</dd>
-              </div>
-              <div>
-                <dt>Civilizations</dt>
-                <dd id="civilization-count">0</dd>
-              </div>
-              <div>
-                <dt>Cultures</dt>
-                <dd id="culture-count">0</dd>
-              </div>
-            </dl>
+          <article class="panel" id="knowledge-panel">
+            <p class="label">Known Knowledge</p>
+            <div id="known-knowledge">
+              <p class="status-text">Log in to see your knowledge.</p>
+            </div>
           </article>
         </section>
       </section>
@@ -264,6 +262,7 @@
         <section class="panel">
           <p class="label">My Character</p>
           <div id="character-view-content">
+            <div class="spinner" aria-label="Loading"></div>
             <p class="status-text">Loading character data...</p>
           </div>
         </section>
@@ -293,6 +292,7 @@
         <section class="panel">
           <p class="label">Society</p>
           <div id="society-view-content">
+            <div class="spinner" aria-label="Loading"></div>
             <p class="status-text">Loading society data...</p>
           </div>
         </section>
@@ -322,6 +322,7 @@
         <section class="panel">
           <p class="label">Knowledge Tree</p>
           <div id="knowledge-tree-content">
+            <div class="spinner" aria-label="Loading"></div>
             <p class="status-text">Loading knowledge entries...</p>
           </div>
         </section>
@@ -333,6 +334,7 @@
         <section class="panel">
           <p class="label">Culture Encyclopedia</p>
           <div id="culture-view-content">
+            <div class="spinner" aria-label="Loading"></div>
             <p class="status-text">Loading cultural records...</p>
           </div>
         </section>
@@ -344,6 +346,7 @@
         <section class="panel">
           <p class="label">My Family</p>
           <div id="family-view-content">
+            <div class="spinner" aria-label="Loading"></div>
             <p class="status-text">Loading lineage data...</p>
           </div>
         </section>
@@ -355,6 +358,7 @@
         <section class="panel">
           <p class="label">Trade &amp; Diplomacy</p>
           <div id="trade-view-content">
+            <div class="spinner" aria-label="Loading"></div>
             <p class="status-text">Loading trade network...</p>
           </div>
         </section>
@@ -366,6 +370,7 @@
         <section class="panel">
           <p class="label">Governance &amp; Territory</p>
           <div id="govern-view-content">
+            <div class="spinner" aria-label="Loading"></div>
             <p class="status-text">Loading governance data...</p>
           </div>
         </section>
@@ -376,7 +381,7 @@
       <section class="content view-section" id="view-chronicle" style="display:none">
         <section class="panel">
           <p class="label">Write Chronicle</p>
-          <p style="margin:0 0 12px;color:var(--muted);font-size:13px">Record your character's deeds for posterity. These entries become part of the world's permanent history.</p>
+          <p style="margin:0 0 12px;color:var(--muted);font-size:13px">Record your character's deeds for posterity. These entries become part of the world's history.</p>
           <form id="chronicle-form" style="display:grid;gap:10px">
             <label>
               Title
@@ -404,6 +409,7 @@
         <section class="panel">
           <p class="label">Recent Chronicles</p>
           <div id="chronicle-view-content">
+            <div class="spinner" aria-label="Loading"></div>
             <p class="status-text">Loading chronicles...</p>
           </div>
         </section>
@@ -455,11 +461,39 @@
 
     <div id="toast-container" class="toast-container" aria-live="polite"></div>
 
+    <dialog id="tutorial-dialog" class="modal tutorial-modal">
+      <div class="modal-header">
+        <p class="label">Welcome to Velmora</p>
+        <p style="font-size:13px;color:var(--muted);margin:0">A raw world awaits. Your legend starts with nothing.</p>
+      </div>
+      <div class="modal-body tutorial-body">
+        <div class="tutorial-step" id="tutorial-step-1">
+          <p><strong>You begin with nothing.</strong> Register an account, create your first character, and step into a raw, untamed world. Your birth-gift shapes your early survival.</p>
+        </div>
+        <div class="tutorial-step" id="tutorial-step-2" style="display:none">
+          <p><strong>Survive and grow stronger.</strong> Forage, hunt, craft, and rest. Each action costs vigor or focus but trains your stats. Manage your resources wisely between ticks.</p>
+        </div>
+        <div class="tutorial-step" id="tutorial-step-3" style="display:none">
+          <p><strong>Forge your own path.</strong> Form groups, found settlements, teach others, or walk alone. Civilization emerges from what players do — not from scripted progression.</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="tutorial-prev" class="secondary-button" type="button" disabled>Back</button>
+        <span id="tutorial-dots" class="tutorial-dots">
+          <span class="dot active"></span>
+          <span class="dot"></span>
+          <span class="dot"></span>
+        </span>
+        <button id="tutorial-next" class="action-button" type="button">Next</button>
+        <button id="tutorial-done" class="action-button" type="button" style="display:none">Get Started</button>
+      </div>
+    </dialog>
+
     <dialog id="character-dialog" class="modal">
       <form id="character-form">
         <div class="modal-header">
           <p class="label">A New Soul Enters the World</p>
-          <p style="font-size:13px;color:var(--muted);margin:0">Choose your name and the gifts you carry into the wild.</p>
+          <p style="font-size:13px;color:var(--muted);margin:0">Choose your name and the talents you carry into the wild.</p>
         </div>
         <div class="modal-body">
           <label>
@@ -574,10 +608,8 @@
     </dialog>
 
     <footer class="bottom-bar">
-      <span id="footer-civilizations">Civilizations: 0</span>
-      <span id="footer-cultures">Cultures: 0</span>
-      <span id="footer-polities">Active polities: 0</span>
-      <span id="footer-population">Registered population: 0</span>
+      <span id="footer-population">Players: --</span>
+      <span id="footer-tick">Tick: --</span>
       <span id="footer-age">World age: tick-based timeline</span>
       <button data-action="rules" type="button">Rules</button>
       <button data-action="wiki" type="button">Wiki</button>

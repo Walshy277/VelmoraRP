@@ -1,10 +1,82 @@
 import { saveSession, clearSession, loadMyCharacters, renderAuthUI, handleRegister, handleLogin, handleLogout, createCharacter, onAuthChange, getSessionAccount, getMyCharacters, getActiveCharacterId } from './components/auth.js';
-import { setRegions, startMap, resizeCanvas } from './components/map.js';
+import { setRegions, startMap, resizeCanvas, enableMapTouch } from './components/map.js';
 import { loadWorldState, getClientState, renderHeroPanel } from './components/render.js';
-import { wireActionButtons } from './components/actions.js';
+import { wireActionButtons, resetPendingCount } from './components/actions.js';
 import { toast } from './components/toast.js';
 import { api } from './components/api.js';
 
+/* ---- Tutorial ---- */
+function initTutorial() {
+  const dialog = document.querySelector('#tutorial-dialog');
+  const prevBtn = document.querySelector('#tutorial-prev');
+  const nextBtn = document.querySelector('#tutorial-next');
+  const doneBtn = document.querySelector('#tutorial-done');
+  const dots = document.querySelectorAll('.dot');
+  let step = 1;
+  const totalSteps = 3;
+
+  function showStep(s) {
+    for (let i = 1; i <= totalSteps; i++) {
+      const el = document.querySelector(`#tutorial-step-${i}`);
+      if (el) el.style.display = i === s ? '' : 'none';
+    }
+    dots.forEach((dot, i) => dot.classList.toggle('active', i === s - 1));
+    prevBtn.disabled = s === 1;
+    nextBtn.style.display = s < totalSteps ? '' : 'none';
+    doneBtn.style.display = s === totalSteps ? '' : 'none';
+  }
+
+  const hasSeenTutorial = localStorage.getItem('velmora_tutorial_seen');
+
+  if (!hasSeenTutorial) {
+    setTimeout(() => {
+      showStep(1);
+      dialog.showModal();
+    }, 500);
+  }
+
+  prevBtn.addEventListener('click', () => {
+    if (step > 1) { step--; showStep(step); }
+  });
+  nextBtn.addEventListener('click', () => {
+    if (step < totalSteps) { step++; showStep(step); }
+  });
+  doneBtn.addEventListener('click', () => {
+    localStorage.setItem('velmora_tutorial_seen', 'true');
+    dialog.close();
+  });
+}
+
+/* ---- Bottom Navigation ---- */
+function initBottomNav() {
+  document.querySelectorAll('.bottom-nav-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const view = item.dataset.view;
+      if (view === 'map') {
+        const canvas = document.querySelector('#world-canvas');
+        if (canvas) canvas.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        document.querySelector('#view-home')?.style ? document.querySelector('#view-home').style.display = '' : null;
+        document.querySelectorAll('.view-section').forEach(s => s.style.display = 'none');
+        if (document.querySelector('#view-home')) document.querySelector('#view-home').style.display = '';
+        const home = document.querySelector('#view-home');
+        if (home) { home.style.display = ''; window.location.hash = ''; }
+        setTimeout(() => canvas?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+        return;
+      }
+      document.querySelectorAll('.bottom-nav-item').forEach(n => n.classList.remove('active'));
+      item.classList.add('active');
+      window.location.hash = view;
+    });
+  });
+}
+
+function updateBottomNav(hash) {
+  document.querySelectorAll('.bottom-nav-item').forEach(item => {
+    item.classList.toggle('active', item.dataset.view === hash || (!hash && item.dataset.view === 'home'));
+  });
+}
+
+/* ---- Auth ---- */
 onAuthChange(() => {
   renderAuthUI();
   renderHeroPanel();
@@ -55,6 +127,7 @@ document.querySelector('#logout-button')?.addEventListener('click', async () => 
   loadWorldState();
 });
 
+/* ---- Character Dialog ---- */
 const charDialog = document.querySelector('#character-dialog');
 document.querySelector('#show-create-character')?.addEventListener('click', () => {
   const nameEl = document.querySelector('#character-name');
@@ -66,6 +139,9 @@ document.querySelector('#enter-world-button')?.addEventListener('click', async (
   const name = document.querySelector('#character-name')?.value?.trim();
   const focus = document.querySelector('#character-focus')?.value || 'survivor';
   if (!name) { toast('Enter a name for your character.', 'error'); return; }
+  const btn = document.querySelector('#enter-world-button');
+  btn.disabled = true;
+  btn.textContent = 'Entering...';
   try {
     const result = await createCharacter(name, focus);
     if (result.ok) {
@@ -76,23 +152,35 @@ document.querySelector('#enter-world-button')?.addEventListener('click', async (
     }
   } catch (err) {
     toast('Could not reach the world. Is the server running?', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Enter the World';
   }
 });
 
+/* ---- Map Reset ---- */
 document.querySelector('#map-reset-button')?.addEventListener('click', () => {
   toast('Map centered.', 'info');
 });
 
+/* ---- Navigation ---- */
 function navigateToView(hash) {
   const sections = document.querySelectorAll('.view-section');
   sections.forEach(s => s.style.display = 'none');
   if (!hash || hash === 'home') {
     const home = document.querySelector('#view-home');
     if (home) home.style.display = '';
+    updateBottomNav('home');
     return;
   }
   const target = document.querySelector(`#view-${hash}`);
   if (target) target.style.display = '';
+  updateBottomNav(hash);
+}
+
+/* ---- View Loaders ---- */
+function smallBar(pct, color) {
+  return `<div class="stat-bar"><div class="stat-fill" style="width:${Math.min(100, pct)}%;background:${color}"></div></div>`;
 }
 
 function makeCharCard(c) {
@@ -100,7 +188,9 @@ function makeCharCard(c) {
     ? `<div class="injury-bar">Injuries: ${c.injuries.map(i => `<span class="injury-tag">${i.kind} (${i.severity})</span>`).join(', ')}</div>`
     : '<div class="injury-bar" style="color:var(--good)">No injuries</div>';
 
-  const healthBar = `<div class="stat-bar"><div class="stat-fill" style="width:${c.health}%;background:${c.health > 50 ? 'var(--good)' : c.health > 25 ? '#c8a040' : '#c66'}"></div></div>`;
+  const r = c.resources || {};
+  const s = c.stats || {};
+  const healthColor = c.health > 50 ? 'var(--good)' : c.health > 25 ? '#c8a040' : '#c66';
 
   return `<div class="char-card">
     <div class="char-card-header">
@@ -109,10 +199,14 @@ function makeCharCard(c) {
     </div>
     <div class="char-card-body">
       <div class="char-stat-row"><span>Health</span><span>${c.health}/100</span></div>
-      <div style="grid-column:1/-1">${healthBar}</div>
+      <div style="grid-column:1/-1">${smallBar(c.health, healthColor)}</div>
+      <div class="char-stat-row"><span>Vigor</span><span>${r.vigor || '?'}/${r.maxVigor || '?'}</span></div>
+      <div class="char-stat-row"><span>Focus</span><span>${r.focus || '?'}/${r.maxFocus || '?'}</span></div>
+      <div class="char-stat-row"><span>Morale</span><span>${r.morale || '?'}/${r.maxMorale || '?'}</span></div>
+      <div class="char-stat-row"><span>Saturation</span><span>${r.saturation || '?'}/${r.maxSaturation || '?'}</span></div>
       <div class="char-stat-row"><span>Age</span><span>${c.ageDays} days</span></div>
       <div class="char-stat-row"><span>Region</span><span>${c.regionName || c.regionId}</span></div>
-      <div class="char-stat-row"><span>Position</span><span>(${Math.round(c.position.x)}, ${Math.round(c.position.y)})</span></div>
+      <div class="char-stat-row"><span>Stats</span><span>M:${s.might || 0} F:${s.fortitude || 0} D:${s.dexterity || 0} I:${s.intellect || 0} C:${s.cunning || 0} P:${s.presence || 0}</span></div>
       <div style="grid-column:1/-1">${injuryWarning}</div>
     </div>
     <div class="char-card-footer">
@@ -151,7 +245,6 @@ function renderRecentActions(actions) {
 async function loadCharacterView() {
   const container = document.querySelector('#character-view-content');
   if (!container) return;
-  container.innerHTML = '<p class="status-text">Loading...</p>';
   const { ok, data } = await api('GET', '/characters/my');
   if (!ok) { container.innerHTML = '<p class="status-text">Could not load characters.</p>'; return; }
   const chars = data.characters || [];
@@ -207,7 +300,6 @@ async function loadKnowledgeView() {
 async function loadFamilyView() {
   const container = document.querySelector('#family-view-content');
   if (!container) return;
-  container.innerHTML = '<p class="status-text">Loading lineage...</p>';
 
   const { ok, data } = await api('GET', '/characters/my');
   if (!ok) { container.innerHTML = '<p class="status-text">Could not load character data.</p>'; return; }
@@ -253,7 +345,6 @@ async function loadFamilyView() {
 async function loadSocietyView() {
   const container = document.querySelector('#society-view-content');
   if (!container) return;
-  container.innerHTML = '<p class="status-text">Loading...</p>';
 
   const [groupsRes, settlementsRes, charsRes, structRes, terrRes] = await Promise.all([
     api('GET', '/world/groups'),
@@ -326,7 +417,6 @@ async function loadSocietyView() {
 async function loadKnowledgeTreeView() {
   const container = document.querySelector('#knowledge-tree-content');
   if (!container) return;
-  container.innerHTML = '<p class="status-text">Loading...</p>';
   const { ok, data } = await api('GET', '/world/knowledge');
   if (!ok) { container.innerHTML = '<p class="status-text">Could not load knowledge.</p>'; return; }
   const entries = data.knowledge || [];
@@ -358,7 +448,6 @@ async function loadKnowledgeTreeView() {
 async function loadCultureView() {
   const container = document.querySelector('#culture-view-content');
   if (!container) return;
-  container.innerHTML = '<p class="status-text">Loading cultural records...</p>';
 
   const [groupsRes, charsRes, eventsRes] = await Promise.all([
     api('GET', '/world/groups'),
@@ -401,7 +490,6 @@ async function loadCultureView() {
 async function loadTradeView() {
   const container = document.querySelector('#trade-view-content');
   if (!container) return;
-  container.innerHTML = '<p class="status-text">Loading trade network...</p>';
 
   const [relRes, groupsRes] = await Promise.all([
     api('GET', '/world/relationships'),
@@ -444,7 +532,6 @@ async function loadTradeView() {
 async function loadGovernView() {
   const container = document.querySelector('#govern-view-content');
   if (!container) return;
-  container.innerHTML = '<p class="status-text">Loading governance data...</p>';
 
   const [terrRes, groupsRes, myCharsRes] = await Promise.all([
     api('GET', '/world/territory'),
@@ -492,7 +579,6 @@ async function loadGovernView() {
 async function loadChronicleView() {
   const container = document.querySelector('#chronicle-view-content');
   if (!container) return;
-  container.innerHTML = '<p class="status-text">Loading chronicles...</p>';
 
   const { ok, data } = await api('GET', '/world/history');
   if (!ok) { container.innerHTML = '<p class="status-text">Could not load chronicles.</p>'; return; }
@@ -538,13 +624,19 @@ function handleRoute() {
 
 window.addEventListener('hashchange', handleRoute);
 
+/* ---- Chronicle Form ---- */
 document.querySelector('#chronicle-form')?.addEventListener('submit', async (e) => {
   e.preventDefault();
   const title = document.querySelector('#chronicle-title')?.value?.trim();
   const body = document.querySelector('#chronicle-body')?.value?.trim();
   const scope = document.querySelector('#chronicle-scope')?.value;
   if (!title || !body) { toast('Enter a title and body for your chronicle.', 'error'); return; }
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Recording...';
   const { ok, data } = await api('POST', '/chronicles', { title, body, scope });
+  submitBtn.disabled = false;
+  submitBtn.textContent = 'Record Chronicle';
   if (ok) {
     toast('Chronicle recorded for posterity!', 'success');
     e.target.reset();
@@ -554,6 +646,7 @@ document.querySelector('#chronicle-form')?.addEventListener('submit', async (e) 
   }
 });
 
+/* ---- Init ---- */
 renderAuthUI();
 loadWorldState();
 if (getSessionAccount()) loadMyCharacters();
@@ -562,10 +655,15 @@ window.setInterval(async () => {
   await loadWorldState();
   const cs = getClientState();
   setRegions(cs.regions);
+  resetPendingCount();
+  if (getSessionAccount()) loadMyCharacters();
 }, 10000);
 
 wireActionButtons();
 window.addEventListener('resize', resizeCanvas);
 startMap();
+enableMapTouch();
 
 handleRoute();
+initTutorial();
+initBottomNav();

@@ -37,6 +37,9 @@ worldRouter.get('/world/characters', async (_request, response, next) => {
     const result = await pool.query(
       `SELECT c.id, c.account_id, c.region_id, c.name, c.status, c.age_days, c.health,
               c.position_x, c.position_y, c.lineage_id, c.created_at,
+              c.might, c.fortitude, c.dexterity, c.intellect, c.cunning, c.presence,
+              c.vigor, c.max_vigor, c.focus, c.max_focus, c.morale, c.max_morale,
+              c.saturation, c.max_saturation,
               r.name AS region_name
        FROM characters c
        LEFT JOIN regions r ON r.id = c.region_id
@@ -208,6 +211,23 @@ worldRouter.get('/world/lineages', async (_request, response, next) => {
     );
 
     response.json({ lineages: result.rows });
+  } catch (error) {
+    next(error);
+  }
+});
+
+worldRouter.get('/world/tick', async (_request, response, next) => {
+  try {
+    const result = await pool.query(
+      `SELECT tick_number, status, started_at, completed_at, duration_ms
+       FROM world_ticks
+       ORDER BY tick_number DESC
+       LIMIT 1`
+    );
+
+    response.json({
+      tick: result.rows[0] || null
+    });
   } catch (error) {
     next(error);
   }

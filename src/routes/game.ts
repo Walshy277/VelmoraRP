@@ -110,10 +110,18 @@ gameRouter.post('/characters', async (request: AuthenticatedRequest, response, n
     const lineageId = lineageResult.rows[0].id;
 
     const charResult = await client.query(
-      `INSERT INTO characters (account_id, region_id, name, lineage_id, position_x, position_y)
+      `INSERT INTO characters (
+         account_id, region_id, name, lineage_id, position_x, position_y,
+         might, fortitude, dexterity, intellect, cunning, presence,
+         vigor, max_vigor, focus, max_focus, morale, max_morale,
+         saturation, max_saturation
+       )
        VALUES ($1, $2, $3, $4,
          random() * 100,
-         random() * 100
+         random() * 100,
+         1, 1, 1, 1, 1, 1,
+         100, 100, 50, 50, 100, 100,
+         100, 100
        )
        RETURNING id, name, status, age_days, health, position_x, position_y, region_id, lineage_id, created_at`,
       [request.accountId, regionId, parsed.data.name, lineageId]
@@ -162,6 +170,8 @@ gameRouter.post('/characters', async (request: AuthenticatedRequest, response, n
         ageDays: character.age_days,
         health: character.health,
         focus: parsed.data.focus,
+        stats: { might: 1, fortitude: 1, dexterity: 1, intellect: 1, cunning: 1, presence: 1 },
+        resources: { vigor: 100, maxVigor: 100, focus: 50, maxFocus: 50, morale: 100, maxMorale: 100, saturation: 100, maxSaturation: 100 },
         position: { x: Number(character.position_x), y: Number(character.position_y) },
         regionId: character.region_id,
         lineageId: character.lineage_id,
@@ -518,6 +528,9 @@ gameRouter.get('/characters/my', async (request: AuthenticatedRequest, response,
     const charsResult = await pool.query(
       `SELECT c.id, c.name, c.status, c.age_days, c.health, c.position_x, c.position_y,
               c.region_id, c.lineage_id, c.created_at,
+              c.might, c.fortitude, c.dexterity, c.intellect, c.cunning, c.presence,
+              c.vigor, c.max_vigor, c.focus, c.max_focus, c.morale, c.max_morale,
+              c.saturation, c.max_saturation,
               r.name AS region_name,
               i.items AS inventory
        FROM characters c
@@ -559,6 +572,24 @@ gameRouter.get('/characters/my', async (request: AuthenticatedRequest, response,
         status: char.status,
         ageDays: char.age_days,
         health: char.health,
+        stats: {
+          might: char.might,
+          fortitude: char.fortitude,
+          dexterity: char.dexterity,
+          intellect: char.intellect,
+          cunning: char.cunning,
+          presence: char.presence
+        },
+        resources: {
+          vigor: char.vigor,
+          maxVigor: char.max_vigor,
+          focus: char.focus,
+          maxFocus: char.max_focus,
+          morale: char.morale,
+          maxMorale: char.max_morale,
+          saturation: char.saturation,
+          maxSaturation: char.max_saturation
+        },
         position: { x: Number(char.position_x), y: Number(char.position_y) },
         regionId: char.region_id,
         regionName: char.region_name,

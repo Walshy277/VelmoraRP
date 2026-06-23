@@ -3,29 +3,21 @@ import type { SimulationSystem } from '../types.js';
 export const survivalSystem: SimulationSystem = {
   name: 'survival',
   async run({ client }) {
-    const consumeResult = await client.query(
-      `
-        WITH active_chars AS (
-          SELECT c.id AS character_id, i.id AS inv_id, COALESCE((i.items->>'food')::int, 0) AS food
-          FROM characters c
-          LEFT JOIN inventories i ON i.character_id = c.id
-          WHERE c.status = 'active'
-        ),
-        fed AS (
-          UPDATE inventories
-          SET items = jsonb_set(items, '{food}', to_jsonb(GREATEST(0, (items->>'food')::int - 1)))
-          FROM active_chars ac
-          WHERE inventories.id = ac.inv_id AND ac.food > 0
-          RETURNING ac.character_id
-        )
-        UPDATE characters
-        SET health = GREATEST(0, health - 1)
-        WHERE status = 'active'
-          AND id NOT IN (SELECT character_id FROM fed)
-      `
-    );
-
-    const starving = consumeResult.rowCount ?? 0;
+    const feedResult = await client.query(`
+      WITH fed AS (
+        UPDATE inventories
+        SET items = jsonb_set(items, '{food}', to_jsonb(GREATEST(0, (items->>'food')::int - 1)))
+        FROM characters c
+        WHERE inventories.character_id = c.id
+          AND c.status = 'active'
+          AND (inventories.items->>'food')::int > 0
+        RETURNING c.id AS character_id
+      )
+      UPDATE characters
+      SET saturation = LEAST(max_saturation, saturation + 15)
+      FROM fed
+      WHERE characters.id = fed.character_id
+    `);
 
     const injuryResult = await client.query(
       `
@@ -76,10 +68,10 @@ export const survivalSystem: SimulationSystem = {
 
     return {
       system: 'survival',
-      processed: starving,
+      processed: feedResult.rowCount ?? 0,
       events: injuryResult.rowCount ?? 0,
       metrics: {
-        starving,
+        fed: feedResult.rowCount ?? 0,
         incapacitations: injuryResult.rowCount ?? 0
       }
     };

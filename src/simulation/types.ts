@@ -6,12 +6,8 @@ export type SimulationSystemName =
   | 'resources'
   | 'survival'
   | 'injuries'
-  | 'progression'
-  | 'evolution'
-  | 'construction'
-  | 'territory'
-  | 'knowledge'
-  | 'politics';
+  | 'individual_resources'
+  | 'construction';
 
 export interface TickContext {
   tickNumber: WorldTickNumber;

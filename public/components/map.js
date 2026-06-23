@@ -1,3 +1,5 @@
+import { toast } from './toast.js';
+
 const canvas = document.querySelector('#world-canvas');
 const context = canvas?.getContext('2d');
 
@@ -12,8 +14,104 @@ const terrainBands = ['#2d3f2f', '#334b39', '#53603d', '#777044', '#4f5f63', '#3
 
 let pulse = 0;
 let regions = [];
+let panX = 0, panY = 0;
+let isDragging = false;
+let dragStartX = 0, dragStartY = 0;
+let dragPanX = 0, dragPanY = 0;
 
 export function setRegions(r) { regions = r || []; }
+
+/* ---- Touch / Mouse drag support ---- */
+export function enableMapTouch() {
+  if (!canvas) return;
+
+  canvas.addEventListener('touchstart', (e) => {
+    if (e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    const rect = canvas.getBoundingClientRect();
+    dragStartX = touch.clientX;
+    dragStartY = touch.clientY;
+    dragPanX = panX;
+    dragPanY = panY;
+    isDragging = false;
+  }, { passive: true });
+
+  canvas.addEventListener('touchmove', (e) => {
+    if (e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    const dx = touch.clientX - dragStartX;
+    const dy = touch.clientY - dragStartY;
+    if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+      isDragging = true;
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      panX = dragPanX + dx * scaleX;
+      panY = dragPanY + dy * scaleY;
+    }
+  }, { passive: true });
+
+  canvas.addEventListener('touchend', (e) => {
+    if (!isDragging) {
+      const touch = e.changedTouches[0];
+      handleCanvasTap(touch.clientX, touch.clientY);
+    }
+    isDragging = false;
+  }, { passive: true });
+
+  canvas.addEventListener('mousedown', (e) => {
+    dragStartX = e.clientX;
+    dragStartY = e.clientY;
+    dragPanX = panX;
+    dragPanY = panY;
+    isDragging = false;
+  });
+
+  canvas.addEventListener('mousemove', (e) => {
+    if (e.buttons !== 1) return;
+    const dx = e.clientX - dragStartX;
+    const dy = e.clientY - dragStartY;
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+      isDragging = true;
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      panX = dragPanX + dx * scaleX;
+      panY = dragPanY + dy * scaleY;
+    }
+  });
+
+  canvas.addEventListener('mouseup', (e) => {
+    if (!isDragging) {
+      handleCanvasTap(e.clientX, e.clientY);
+    }
+    isDragging = false;
+  });
+
+  canvas.addEventListener('mouseleave', () => {
+    isDragging = false;
+  });
+}
+
+function handleCanvasTap(clientX, clientY) {
+  if (!canvas) return;
+  const rect = canvas.getBoundingClientRect();
+  const x = (clientX - rect.left) / rect.width;
+  const y = (clientY - rect.top) / rect.height;
+  const sites = getVisibleSites();
+  const tapped = sites.find(s => {
+    const dx = x - s.x;
+    const dy = y - s.y;
+    return Math.sqrt(dx * dx + dy * dy) < 0.04;
+  });
+  if (tapped) {
+    toast(`${tapped.name} — ${tapped.terrain}`, 'info');
+  } else {
+    toast(`Exploring the world...`, 'info');
+  }
+}
+
+/* ---- Map drawing ---- */
 
 function getVisibleSites() {
   if (regions.length === 0) return foundationSites;
@@ -36,6 +134,13 @@ function drawMapImpl() {
   if (width <= 0 || height <= 0) { window.requestAnimationFrame(drawMapImpl); return; }
   const sites = getVisibleSites();
   pulse += 0.01;
+
+  context.save();
+  context.setTransform(1, 0, 0, 1, 0, 0);
+  context.clearRect(0, 0, canvas.width, canvas.height);
+
+  const scale = window.devicePixelRatio || 1;
+  context.translate(panX, panY);
 
   const sea = context.createLinearGradient(0, 0, width, height);
   sea.addColorStop(0, '#26393b');
@@ -121,6 +226,7 @@ function drawMapImpl() {
     context.restore();
   }
 
+  context.restore();
   window.requestAnimationFrame(drawMapImpl);
 }
 
@@ -136,5 +242,9 @@ export function resizeCanvas() {
   const scale = window.devicePixelRatio || 1;
   canvas.width = Math.max(1, Math.floor(rect.width * scale));
   canvas.height = Math.max(1, Math.floor(rect.height * scale));
-  context.setTransform(scale, 0, 0, scale, 0, 0);
+}
+
+export function resetPan() {
+  panX = 0;
+  panY = 0;
 }

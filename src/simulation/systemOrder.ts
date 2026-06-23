@@ -1,16 +1,12 @@
 import type { SimulationSystem, SimulationSystemName } from './types.js';
 
 export const SYSTEM_EXECUTION_ORDER = [
-  'player_actions',
   'resources',
+  'individual_resources',
   'survival',
   'injuries',
-  'progression',
-  'evolution',
-  'construction',
-  'territory',
-  'knowledge',
-  'politics'
+  'player_actions',
+  'construction'
 ] as const satisfies readonly SimulationSystemName[];
 
 export function orderSystems(systems: readonly SimulationSystem[]): SimulationSystem[] {

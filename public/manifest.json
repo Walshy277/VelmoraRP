@@ -1,0 +1,22 @@
+{
+  "name": "VelmoraRP",
+  "short_name": "VelmoraRP",
+  "description": "Write history. Build civilizations. A persistent browser-based civilization simulation.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#11100c",
+  "theme_color": "#c89d46",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

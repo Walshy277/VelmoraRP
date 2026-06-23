@@ -1,27 +1,19 @@
 import { constructionSystem } from './construction.js';
-import { evolutionSystem } from './evolution.js';
 import { injuriesSystem } from './injuries.js';
-import { knowledgeSystem } from './knowledge.js';
+import { individualResourcesSystem } from './individualResources.js';
 import { playerActionsSystem } from './playerActions.js';
-import { politicsSystem } from './politics.js';
-import { progressionSystem } from './progression.js';
 import { resourceSystem } from './resources.js';
 import { survivalSystem } from './survival.js';
-import { territorySystem } from './territory.js';
 import type { SimulationSystem } from '../types.js';
 import { orderSystems } from '../systemOrder.js';
 
 const unorderedSimulationSystems: SimulationSystem[] = [
-  playerActionsSystem,
   resourceSystem,
+  individualResourcesSystem,
   survivalSystem,
   injuriesSystem,
-  progressionSystem,
-  evolutionSystem,
-  constructionSystem,
-  territorySystem,
-  knowledgeSystem,
-  politicsSystem
+  playerActionsSystem,
+  constructionSystem
 ];
 
 export const simulationSystems: SimulationSystem[] = orderSystems(unorderedSimulationSystems);
